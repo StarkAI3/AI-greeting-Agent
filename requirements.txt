@@ -1,0 +1,31 @@
+# YOLO8n + DINOv3 Enhanced Face Recognition System (No FaceNet)
+# Core framework
+flask==3.0.0
+flask-cors==4.0.0
+werkzeug==3.0.1
+
+# Computer vision and ML
+opencv-python==4.9.0.80
+torch==2.1.2+cu118
+torchvision==0.16.2+cu118
+torchaudio==2.1.2+cu118
+ultralytics==8.1.0
+
+# DINOv3 for advanced feature extraction (Replaces FaceNet)
+transformers==4.55.2
+timm==1.0.19
+
+# Vector database (Updated package name)
+pinecone==5.3.1
+
+# Image processing
+Pillow==10.2.0
+
+# Utilities
+numpy==1.26.3
+tqdm==4.66.1
+python-dateutil==2.8.2
+
+# Additional dependencies
+requests==2.31.0
+scikit-learn==1.4.0
