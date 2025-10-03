@@ -95,8 +95,8 @@ class FaceRecognitionModel:
                 pretrained='vggface2'
             ).eval().to(self.device)
             
-            # Face detection model (YOLO8n)
-            yolo_model_path = r"C:\Document Local\Projects\Lost & Found with new Face pt model\Models\Face_Models\Face_Detect_best.pt"
+            # Face detection model (YOLO8n).pt
+            yolo_model_path = r"/home/stark/Desktop/Lost---Found-2.0/Models/Face_Models/Face_Detect_best.pt"
             if not os.path.exists(yolo_model_path):
                 raise FileNotFoundError(f"YOLO model not found at: {yolo_model_path}")
             
@@ -285,7 +285,7 @@ class FaceRecognitionModel:
                 torch.cuda.empty_cache()
             return None
     
-    def enroll_face(self, image_path: str, face_id: str, name: str) -> bool:
+    def enroll_face(self, image_path: str, face_id: str, name: str, additional_metadata: dict = None) -> bool:
         """
         Enroll a new face in the database
         
@@ -293,6 +293,7 @@ class FaceRecognitionModel:
             image_path: Path to the image file
             face_id: Unique face ID
             name: Face name/label
+            additional_metadata: Additional metadata dictionary (optional)
             
         Returns:
             True if enrollment successful, False otherwise
@@ -326,11 +327,22 @@ class FaceRecognitionModel:
             embedding = self.get_embedding(face_crop)
             
             if embedding is not None:
+                # Prepare metadata
+                metadata = {
+                    "name": name, 
+                    "image_path": image_path,
+                    "face_id": face_id
+                }
+                
+                # Add additional metadata if provided
+                if additional_metadata:
+                    metadata.update(additional_metadata)
+                
                 # Store in Pinecone
                 self.index.upsert(vectors=[(
                     face_id, 
                     embedding.tolist(), 
-                    {"name": name, "image_path": image_path}
+                    metadata
                 )])
                 
                 # Save face image for frontend display
@@ -344,6 +356,113 @@ class FaceRecognitionModel:
                 
         except Exception as e:
             logger.error(f"Error enrolling face: {e}")
+            return False
+    
+    def enroll_face_multiple(self, image_paths: list, face_id: str, name: str, additional_metadata: dict = None) -> bool:
+        """
+        Enroll a new face using multiple images for better accuracy
+        
+        Args:
+            image_paths: List of paths to image files
+            face_id: Unique face ID
+            name: Face name/label
+            additional_metadata: Additional metadata dictionary (optional)
+            
+        Returns:
+            True if enrollment successful, False otherwise
+        """
+        try:
+            logger.info(f"Processing {len(image_paths)} images for enrollment: {name}")
+            
+            all_embeddings = []
+            successful_images = []
+            
+            # Process each image
+            for i, image_path in enumerate(image_paths):
+                logger.info(f"Processing image {i+1}/{len(image_paths)}: {image_path}")
+                
+                # Load image
+                img = cv2.imread(image_path)
+                if img is None:
+                    logger.warning(f"Failed to load image: {image_path}")
+                    continue
+                
+                # Detect faces using YOLO
+                boxes = self.detect_faces(img, confidence_threshold=0.3)
+                if boxes is None or len(boxes) == 0:
+                    logger.warning(f"No faces detected in {image_path}")
+                    continue
+                
+                # Process the first detected face
+                box = boxes[0]
+                x1, y1, x2, y2 = map(int, box)
+                
+                # Add padding to the bounding box
+                h, w = img.shape[:2]
+                padding = 10
+                x1 = max(0, x1 - padding)
+                y1 = max(0, y1 - padding)
+                x2 = min(w, x2 + padding)
+                y2 = min(h, y2 + padding)
+                
+                face_crop = img[y1:y2, x1:x2]
+                embedding = self.get_embedding(face_crop)
+                
+                if embedding is not None:
+                    all_embeddings.append(embedding)
+                    successful_images.append(image_path)
+                    logger.info(f"✅ Successfully extracted embedding from image {i+1}")
+                else:
+                    logger.warning(f"Failed to get embedding from image {i+1}")
+            
+            if not all_embeddings:
+                logger.error("No valid embeddings extracted from any image")
+                return False
+            
+            # Calculate average embedding for better representation
+            avg_embedding = np.mean(all_embeddings, axis=0)
+            
+            # Prepare metadata
+            metadata = {
+                "name": name, 
+                "face_id": face_id,
+                "image_count": len(successful_images),
+                "successful_images": successful_images
+            }
+            
+            # Add additional metadata if provided
+            if additional_metadata:
+                metadata.update(additional_metadata)
+            
+            # Store in Pinecone with the average embedding
+            self.index.upsert(vectors=[(
+                face_id, 
+                avg_embedding.tolist(), 
+                metadata
+            )])
+            
+            # Save the best face image (first successful one) for display
+            if successful_images:
+                best_img = cv2.imread(successful_images[0])
+                if best_img is not None:
+                    boxes = self.detect_faces(best_img, confidence_threshold=0.3)
+                    if boxes is not None and len(boxes) > 0:
+                        box = boxes[0]
+                        x1, y1, x2, y2 = map(int, box)
+                        h, w = best_img.shape[:2]
+                        padding = 10
+                        x1 = max(0, x1 - padding)
+                        y1 = max(0, y1 - padding)
+                        x2 = min(w, x2 + padding)
+                        y2 = min(h, y2 + padding)
+                        face_crop = best_img[y1:y2, x1:x2]
+                        self.save_face_image(face_id, face_crop, name)
+            
+            logger.info(f"✅ Enrolled {name} with ID {face_id} using {len(successful_images)}/{len(image_paths)} images")
+            return True
+                
+        except Exception as e:
+            logger.error(f"Error enrolling face with multiple images: {e}")
             return False
     
     def recognize_face(self, face_embedding: np.ndarray) -> Tuple[str, float]:
@@ -700,13 +819,31 @@ class FaceRecognitionModel:
             # Scan for face images
             for img_file in faces_dir.glob("*.jpg"):
                 face_id = img_file.stem
+                
+                # Try to get additional metadata from Pinecone
+                pinecone_metadata = {}
+                try:
+                    query_result = self.index.query(id=face_id, top_k=1, include_metadata=True)
+                    if query_result.matches:
+                        pinecone_metadata = query_result.matches[0].metadata
+                except:
+                    pass
+                
                 face_data = {
                     "id": face_id,
-                    "name": metadata.get(face_id, {}).get("name", f"Face_{face_id[:8]}"),
+                    "name": metadata.get(face_id, {}).get("name", pinecone_metadata.get("name", f"Face_{face_id[:8]}")),
                     "image_path": str(img_file),
-                    "enrolled_date": metadata.get(face_id, {}).get("enrolled_date", "Unknown"),
+                    "enrolled_date": metadata.get(face_id, {}).get("enrolled_date", pinecone_metadata.get("enrollment_date", "Unknown")),
                     "confidence_threshold": metadata.get(face_id, {}).get("confidence_threshold", 0.8),
-                    "times_recognized": metadata.get(face_id, {}).get("times_recognized", 0)
+                    "times_recognized": metadata.get(face_id, {}).get("times_recognized", 0),
+                    # Additional metadata from Pinecone
+                    "person_type": pinecone_metadata.get("person_type", "Unknown"),
+                    "employee_id": pinecone_metadata.get("employee_id", ""),
+                    "position": pinecone_metadata.get("position", ""),
+                    "department": pinecone_metadata.get("department", ""),
+                    "phone_number": pinecone_metadata.get("phone_number", ""),
+                    "special_notes": pinecone_metadata.get("special_notes", ""),
+                    "image_count": pinecone_metadata.get("image_count", 1)
                 }
                 faces_list.append(face_data)
             

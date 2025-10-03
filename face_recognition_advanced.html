@@ -132,19 +132,32 @@
             color: #555;
         }
         
-        input[type="text"], input[type="file"], select, input[type="range"] {
+        input[type="text"], input[type="file"], select, input[type="range"], 
+        input[type="date"], input[type="tel"], textarea {
             width: 100%;
             padding: 12px;
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
             transition: border-color 0.3s;
+            font-family: inherit;
         }
         
-        input[type="text"]:focus, input[type="file"]:focus, select:focus {
+        input[type="text"]:focus, input[type="file"]:focus, select:focus,
+        input[type="date"]:focus, input[type="tel"]:focus, textarea:focus {
             outline: none;
             border-color: #4ECDC4;
             box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        select {
+            background-color: white;
+            cursor: pointer;
         }
         
         .btn {
@@ -596,9 +609,89 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="enrollImage">Face Image:</label>
-                        <input type="file" id="enrollImage" name="enrollImage" 
-                               accept="image/*" required>
+                        <label for="employeeId">Employee ID:</label>
+                        <input type="text" id="employeeId" name="employeeId" 
+                               placeholder="Enter employee ID (optional)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="position">Position:</label>
+                        <input type="text" id="position" name="position" 
+                               placeholder="Enter job title or position (optional)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="department">Department:</label>
+                        <input type="text" id="department" name="department" 
+                               placeholder="Enter department (optional)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dateOfBirth">Date of Birth:</label>
+                        <input type="date" id="dateOfBirth" name="dateOfBirth">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="joiningDate">Joining Date:</label>
+                        <input type="date" id="joiningDate" name="joiningDate">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phoneNumber">Phone Number:</label>
+                        <input type="tel" id="phoneNumber" name="phoneNumber" 
+                               placeholder="Enter phone number (optional)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="personType">Who are they?:</label>
+                        <select id="personType" name="personType" required>
+                            <option value="">Select person type</option>
+                            <option value="employee">Employee</option>
+                            <option value="client">Client</option>
+                            <option value="customer">Customer</option>
+                            <option value="visitor">Visitor</option>
+                            <option value="vendor">Vendor</option>
+                            <option value="contractor">Contractor</option>
+                            <option value="guest">Guest</option>
+                            <option value="intern">Intern</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="specialNotes">Special Notes (Optional):</label>
+                        <textarea id="specialNotes" name="specialNotes" rows="3" 
+                                  placeholder="e.g., VIP client, first time visitor, delivery person"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="purposeOfVisit">Purpose of Visit (Optional):</label>
+                        <input type="text" id="purposeOfVisit" name="purposeOfVisit" 
+                               placeholder="Enter purpose of visit (optional)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="enrollImages">Face Images (Upload up to 5 images for better accuracy):</label>
+                        <input type="file" id="enrollImages" name="enrollImages" 
+                               accept="image/*" multiple required onchange="displaySelectedImages()">
+                        <small style="color: #666; margin-top: 5px; display: block;">
+                            💡 Upload multiple angles (front, side, different expressions) for better recognition accuracy
+                        </small>
+                        
+                        <!-- Container for displaying selected images -->
+                        <div id="selectedImagesList" style="margin-top: 10px; display: none;">
+                            <h4 style="color: #4ECDC4; margin-bottom: 10px;">📸 Selected Images:</h4>
+                            <div id="imagesContainer" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+                            <div style="margin-top: 10px; display: flex; gap: 10px;">
+                                <button type="button" onclick="document.getElementById('enrollImages').click()" 
+                                        style="background: #4ECDC4; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+                                    ➕ Add More Images
+                                </button>
+                                <button type="button" onclick="clearAllImages()" 
+                                        style="background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+                                    🗑️ Clear All Images
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     
                     <button type="submit" class="btn" id="enrollBtn">
@@ -851,6 +944,135 @@
     <script>
         let currentOptimization = { quality_mode: 'balanced', skip_frames: 5, resize_factor: 0.5 };
         
+        // Global array to store selected files
+        let selectedFilesArray = [];
+        
+        // Function to display selected images dynamically
+        function displaySelectedImages() {
+            const fileInput = document.getElementById('enrollImages');
+            const newFiles = fileInput.files;
+            const imagesContainer = document.getElementById('imagesContainer');
+            const selectedImagesList = document.getElementById('selectedImagesList');
+            
+            // Add new files to the array (avoid duplicates)
+            for (let i = 0; i < newFiles.length; i++) {
+                const newFile = newFiles[i];
+                // Check if file already exists (by name and size)
+                const exists = selectedFilesArray.some(file => 
+                    file.name === newFile.name && file.size === newFile.size
+                );
+                if (!exists) {
+                    selectedFilesArray.push(newFile);
+                }
+            }
+            
+            // Check if we exceed the limit
+            if (selectedFilesArray.length > 5) {
+                selectedFilesArray = selectedFilesArray.slice(0, 5);
+                alert('Maximum 5 images allowed. Only the first 5 images are kept.');
+            }
+            
+            // Clear previous images
+            imagesContainer.innerHTML = '';
+            
+            if (selectedFilesArray.length === 0) {
+                selectedImagesList.style.display = 'none';
+                return;
+            }
+            
+            // Show the container
+            selectedImagesList.style.display = 'block';
+            
+            // Display each selected image
+            selectedFilesArray.forEach((file, index) => {
+                const imageDiv = document.createElement('div');
+                const isMaxReached = selectedFilesArray.length >= 5;
+                
+                imageDiv.style.cssText = `
+                    background: linear-gradient(135deg, #4ECDC4, #44A08D);
+                    color: white;
+                    padding: 10px 15px;
+                    border-radius: 8px;
+                    margin: 5px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                    position: relative;
+                    min-width: 200px;
+                    ${isMaxReached ? 'border: 2px solid #ff6b6b;' : ''}
+                `;
+                
+                imageDiv.innerHTML = `
+                    <span style="font-size: 18px;">📷</span>
+                    <div>
+                        <div style="font-weight: bold; font-size: 14px;">${file.name}</div>
+                        <div style="font-size: 12px; opacity: 0.8;">${(file.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                    <button type="button" onclick="removeImage(${index})" 
+                            style="background: rgba(255,255,255,0.2); border: none; color: white; 
+                                   border-radius: 50%; width: 25px; height: 25px; cursor: pointer; 
+                                   font-size: 16px; line-height: 1; position: absolute; top: 5px; right: 5px;">
+                        ×
+                    </button>
+                `;
+                
+                imagesContainer.appendChild(imageDiv);
+            });
+            
+            // Update file count display
+            const countDiv = document.createElement('div');
+            const isMaxReached = selectedFilesArray.length >= 5;
+            
+            countDiv.style.cssText = `
+                width: 100%;
+                text-align: center;
+                margin-top: 10px;
+                padding: 8px;
+                border-radius: 5px;
+                font-weight: bold;
+                background: ${isMaxReached ? 'rgba(255, 107, 107, 0.1)' : 'rgba(78, 205, 196, 0.1)'};
+                color: ${isMaxReached ? '#ff6b6b' : '#4ECDC4'};
+                border: ${isMaxReached ? '1px solid #ff6b6b' : 'none'};
+            `;
+            
+            const statusIcon = isMaxReached ? '⚠️' : '📊';
+            const statusText = isMaxReached ? 'Maximum reached!' : 'images selected';
+            countDiv.innerHTML = `${statusIcon} Total: ${selectedFilesArray.length}/5 ${statusText}`;
+            imagesContainer.appendChild(countDiv);
+        }
+        
+        // Function to remove individual image
+        function removeImage(indexToRemove) {
+            // Remove from our array
+            selectedFilesArray.splice(indexToRemove, 1);
+            
+            // Update the file input to match our array
+            updateFileInput();
+            
+            // Refresh the display
+            displaySelectedImages();
+        }
+        
+        // Function to clear all images
+        function clearAllImages() {
+            selectedFilesArray = [];
+            updateFileInput();
+            displaySelectedImages();
+        }
+        
+        // Helper function to update the file input to match our array
+        function updateFileInput() {
+            const fileInput = document.getElementById('enrollImages');
+            const dt = new DataTransfer();
+            
+            selectedFilesArray.forEach(file => {
+                dt.items.add(file);
+            });
+            
+            fileInput.files = dt.files;
+        }
+        
         // Message display function
         function showMessage(message, type = 'info') {
             // Create message element
@@ -1013,7 +1235,38 @@
         document.getElementById('enrollForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const formData = new FormData(e.target);
+            // Validate multiple image upload
+            if (selectedFilesArray.length === 0) {
+                alert('Please select at least one image');
+                return;
+            }
+            
+            if (selectedFilesArray.length > 5) {
+                alert('Please select maximum 5 images');
+                return;
+            }
+            
+            // Create FormData manually to ensure multiple files are handled correctly
+            const formData = new FormData();
+            
+            // Add all form fields
+            formData.append('faceName', document.getElementById('faceName').value);
+            formData.append('faceId', document.getElementById('faceId').value);
+            formData.append('personType', document.getElementById('personType').value);
+            formData.append('employeeId', document.getElementById('employeeId').value);
+            formData.append('position', document.getElementById('position').value);
+            formData.append('department', document.getElementById('department').value);
+            formData.append('dateOfBirth', document.getElementById('dateOfBirth').value);
+            formData.append('joiningDate', document.getElementById('joiningDate').value);
+            formData.append('phoneNumber', document.getElementById('phoneNumber').value);
+            formData.append('specialNotes', document.getElementById('specialNotes').value);
+            formData.append('purposeOfVisit', document.getElementById('purposeOfVisit').value);
+            
+            // Add all selected images with the same field name
+            for (let i = 0; i < selectedFilesArray.length; i++) {
+                formData.append('enrollImages', selectedFilesArray[i]);
+            }
+            
             const btn = document.getElementById('enrollBtn');
             const loading = document.getElementById('enrollLoading');
             const result = document.getElementById('enrollResult');
@@ -1039,6 +1292,8 @@
                 
                 if (data.success) {
                     e.target.reset();
+                    // Clear the image display
+                    displaySelectedImages();
                     setTimeout(() => refreshAnalytics(), 1000);
                 }
             } catch (error) {

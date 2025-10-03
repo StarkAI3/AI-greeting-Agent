@@ -1,0 +1,25 @@
+{
+  "001": {
+    "enrolled_date": "2025-10-03T12:52:39.251701",
+    "times_recognized": 19,
+    "confidence_threshold": 0.8,
+    "name": "Shubham Kambale",
+    "last_updated": "2025-10-03T12:52:39.251739",
+    "last_recognized": "2025-10-03T14:09:32.997982"
+  },
+  "002": {
+    "enrolled_date": "2025-10-03T14:06:22.282598",
+    "times_recognized": 0,
+    "confidence_threshold": 0.8,
+    "name": "Yash Amrutkar",
+    "last_updated": "2025-10-03T14:06:22.282627"
+  },
+  "003": {
+    "enrolled_date": "2025-10-03T14:17:07.163866",
+    "times_recognized": 1,
+    "confidence_threshold": 0.8,
+    "name": "Kunal Mane",
+    "last_updated": "2025-10-03T14:17:07.163889",
+    "last_recognized": "2025-10-03T14:19:05.526685"
+  }
+}

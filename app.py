@@ -202,45 +202,93 @@ def enroll_face():
         return jsonify({'success': False, 'message': 'Face recognition model not initialized'}), 500
 
     try:
-        # Validate request
-        if 'enrollImage' not in request.files:
-            return jsonify({'success': False, 'message': 'No image file provided'}), 400
+        # Validate request - check for multiple images
+        if 'enrollImages' not in request.files:
+            return jsonify({'success': False, 'message': 'No image files provided'}), 400
         
-        file = request.files['enrollImage']
+        files = request.files.getlist('enrollImages')
+        logger.info(f"📁 Received {len(files)} files for enrollment")
+        
+        # Validate file count
+        if len(files) == 0:
+            return jsonify({'success': False, 'message': 'No images selected'}), 400
+        
+        if len(files) > 5:
+            return jsonify({'success': False, 'message': 'Maximum 5 images allowed'}), 400
+        
+        # Validate each file
+        for file in files:
+            if file.filename == '':
+                return jsonify({'success': False, 'message': 'One or more files are empty'}), 400
+            
+            if not allowed_file(file.filename) or not is_image(file.filename):
+                return jsonify({'success': False, 'message': f'Invalid file type: {file.filename}. Please upload images only.'}), 400
         face_name = request.form.get('faceName', '').strip()
         face_id = request.form.get('faceId', '').strip()
+        person_type = request.form.get('personType', '').strip()
         
-        if not face_name or not face_id:
-            return jsonify({'success': False, 'message': 'Face name and ID are required'}), 400
+        # Get additional fields
+        employee_id = request.form.get('employeeId', '').strip()
+        position = request.form.get('position', '').strip()
+        department = request.form.get('department', '').strip()
+        date_of_birth = request.form.get('dateOfBirth', '').strip()
+        joining_date = request.form.get('joiningDate', '').strip()
+        phone_number = request.form.get('phoneNumber', '').strip()
+        special_notes = request.form.get('specialNotes', '').strip()
+        purpose_of_visit = request.form.get('purposeOfVisit', '').strip()
         
-        if file.filename == '':
-            return jsonify({'success': False, 'message': 'No file selected'}), 400
+        if not face_name or not face_id or not person_type:
+            return jsonify({'success': False, 'message': 'Face name, ID, and person type are required'}), 400
+
+        # Save all uploaded files
+        filepaths = []
+        for i, file in enumerate(files):
+            filename = secure_filename(f"{face_id}_{i}_{uuid.uuid4().hex}.{file.filename.rsplit('.', 1)[1].lower()}")
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            filepaths.append(filepath)
+
+        logger.info(f"Processing enrollment for {face_name} (ID: {face_id}) - Type: {person_type} with {len(files)} images")
+
+        # Prepare additional metadata
+        additional_metadata = {
+            'person_type': person_type,
+            'employee_id': employee_id,
+            'position': position,
+            'department': department,
+            'date_of_birth': date_of_birth,
+            'joining_date': joining_date,
+            'phone_number': phone_number,
+            'special_notes': special_notes,
+            'purpose_of_visit': purpose_of_visit,
+            'enrollment_date': datetime.now().isoformat(),
+            'image_count': len(files),
+            'image_paths': filepaths
+        }
         
-        if not allowed_file(file.filename) or not is_image(file.filename):
-            return jsonify({'success': False, 'message': 'Invalid file type. Please upload an image.'}), 400
+        # Remove empty values from metadata
+        additional_metadata = {k: v for k, v in additional_metadata.items() if v}
 
-        # Save uploaded file
-        filename = secure_filename(f"{face_id}_{uuid.uuid4().hex}.{file.filename.rsplit('.', 1)[1].lower()}")
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-
-        logger.info(f"Processing enrollment for {face_name} (ID: {face_id})")
-
-        # Enroll face
-        success = current_model.enroll_face(filepath, face_id, face_name)
+        # Enroll face with multiple images and additional metadata
+        success = current_model.enroll_face_multiple(filepaths, face_id, face_name, additional_metadata)
         
         if success:
             return jsonify({
                 'success': True, 
-                'message': f'Successfully enrolled {face_name}',
+                'message': f'Successfully enrolled {face_name} ({person_type}) with {len(files)} images',
                 'face_id': face_id,
-                'face_name': face_name
+                'face_name': face_name,
+                'person_type': person_type,
+                'employee_id': employee_id,
+                'department': department,
+                'image_count': len(files)
             })
         else:
-            # Clean up file on failure
-            if os.path.exists(filepath):
-                os.remove(filepath)
-            return jsonify({'success': False, 'message': 'No faces detected in the image or enrollment failed'}), 400
+            # Clean up all files on failure
+            for filepath in filepaths:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            return jsonify({'success': False, 'message': 'No faces detected in the images or enrollment failed'}), 400
 
     except Exception as e:
         logger.error(f"Error enrolling face: {e}")
