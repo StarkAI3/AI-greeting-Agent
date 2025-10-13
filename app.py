@@ -36,8 +36,13 @@ for folder in [app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], app.con
     Path(folder).mkdir(exist_ok=True)
 
 # Initialize face recognition model
-# You need to set your Pinecone API key as an environment variable
-# Set it in PowerShell: $env:PINECONE_API_KEY="your-api-key-here"
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not available, use system environment variables
+
 PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
 
 if not PINECONE_API_KEY or PINECONE_API_KEY == 'your-pinecone-api-key-here':

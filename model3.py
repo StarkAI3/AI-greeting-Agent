@@ -96,7 +96,7 @@ class FaceRecognitionModel:
             ).eval().to(self.device)
             
             # Face detection model (YOLO8n).pt
-            yolo_model_path = r"/home/stark/Desktop/Lost---Found-2.0/Models/Face_Models/Face_Detect_best.pt"
+            yolo_model_path = r"/home/stark/Desktop/Face-Detection-YOLO/Models/Face_Models/Face_Detect_best.pt"
             if not os.path.exists(yolo_model_path):
                 raise FileNotFoundError(f"YOLO model not found at: {yolo_model_path}")
             
