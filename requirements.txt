@@ -33,3 +33,8 @@ scikit-learn==1.4.0
 # Optional dependencies for enhanced functionality
 facenet-pytorch==2.5.3
 psutil==5.9.6
+ 
+# FastAPI stack
+fastapi
+uvicorn[standard]
+python-multipart

@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>📹 Real-time Camera</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 960px; margin: 24px auto; padding: 0 12px; }
+    .row { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+    button { padding: 10px 16px; border-radius: 8px; border: 0; background: #4ECDC4; color: #fff; cursor: pointer; }
+    button.secondary { background: #6c757d; }
+    #status { padding: 8px 12px; background: #f8f9fa; border-radius: 8px; }
+    img { width: 100%; max-width: 860px; border: 2px solid #e9ecef; border-radius: 12px; }
+  </style>
+  <script>
+    async function startCam(){
+      setStatus('Starting camera...');
+      const r = await fetch('/api/camera/start', { method: 'POST' });
+      const j = await r.json();
+      if(j.success){
+        setStatus('Camera running');
+        document.getElementById('stream').src = '/api/camera/stream?t=' + Date.now();
+      } else {
+        setStatus('Error: ' + j.message, true);
+      }
+    }
+    async function stopCam(){
+      await fetch('/api/camera/stop', { method: 'POST' });
+      setStatus('Camera stopped');
+      document.getElementById('stream').src = '';
+    }
+    function setStatus(msg, isError){
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.style.background = isError ? '#ffebee' : '#e8f5e9';
+      el.style.color = isError ? '#c62828' : '#2e7d32';
+    }
+  </script>
+</head>
+<body>
+  <h2>📹 Real-time Camera Recognition</h2>
+  <div id="status">Idle</div>
+  <div class="row">
+    <button onclick="startCam()">Start</button>
+    <button class="secondary" onclick="stopCam()">Stop</button>
+  </div>
+  <img id="stream" alt="Live stream" />
+</body>
+</html>
+
+
