@@ -95,40 +95,57 @@ class FaceRecognitionModel:
                 pretrained='vggface2'
             ).eval().to(self.device)
             
-            # Face detection model (YOLO8n).pt
-            yolo_model_path = r"/home/stark/Desktop/Face-Detection-YOLO/Models/Face_Models/Face_Detect_best.pt"
+            # Face detection model (YOLO) with configurable path and safe fallback
+            yolo_model_path = os.getenv(
+                "YOLO_MODEL_PATH",
+                "/home/stark/Desktop/Face-Detection-YOLO/Models/Face_Models/Face_Detect_best.pt",
+            )
+            yolo_strict = str(os.getenv("YOLO_STRICT", "false")).strip().lower() in ("1", "true", "yes", "on")
+
             if not os.path.exists(yolo_model_path):
-                raise FileNotFoundError(f"YOLO model not found at: {yolo_model_path}")
-            
-            # Load YOLO model with compatibility settings for older model files
-            try:
-                # First try normal loading
-                self.yolo_model = YOLO(yolo_model_path)
-                logger.info("✅ YOLO model loaded successfully (normal mode)")
-            except Exception as e:
-                logger.warning(f"⚠️ Normal YOLO loading failed: {e}")
+                if yolo_strict:
+                    raise FileNotFoundError(f"YOLO model not found at: {yolo_model_path} (YOLO_STRICT is enabled)")
+                logger.warning(
+                    f"YOLO weights not found at: {yolo_model_path}. Falling back to OpenCV face detection"
+                )
+                self.yolo_model = None
+                self.face_cascade = cv2.CascadeClassifier(
+                    cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+                )
+            else:
+                # Load YOLO model with compatibility settings for older model files
                 try:
-                    # Try with warning suppression for compatibility
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")
-                        # Temporarily modify torch loading behavior
-                        old_load = torch.load
-                        def safe_load(*args, **kwargs):
-                            kwargs['weights_only'] = False
-                            return old_load(*args, **kwargs)
-                        torch.load = safe_load
-                        
-                        self.yolo_model = YOLO(yolo_model_path)
-                        
-                        # Restore original torch.load
-                        torch.load = old_load
-                        logger.info("✅ YOLO model loaded successfully (compatibility mode)")
-                except Exception as e2:
-                    logger.error(f"❌ Failed to load YOLO model: {e2}")
-                    # Fallback to a basic face detection using OpenCV
-                    logger.warning("⚠️ Falling back to OpenCV face detection")
-                    self.yolo_model = None
-                    self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+                    # First try normal loading
+                    self.yolo_model = YOLO(yolo_model_path)
+                    logger.info("✅ YOLO model loaded successfully (normal mode)")
+                except Exception as e:
+                    logger.warning(f"⚠️ Normal YOLO loading failed: {e}")
+                    try:
+                        # Try with warning suppression for compatibility
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            # Temporarily modify torch loading behavior
+                            old_load = torch.load
+                            def safe_load(*args, **kwargs):
+                                kwargs['weights_only'] = False
+                                return old_load(*args, **kwargs)
+                            torch.load = safe_load
+                            
+                            self.yolo_model = YOLO(yolo_model_path)
+                            
+                            # Restore original torch.load
+                            torch.load = old_load
+                            logger.info("✅ YOLO model loaded successfully (compatibility mode)")
+                    except Exception as e2:
+                        logger.error(f"❌ Failed to load YOLO model: {e2}")
+                        if yolo_strict:
+                            raise
+                        # Fallback to a basic face detection using OpenCV
+                        logger.warning("⚠️ Falling back to OpenCV face detection")
+                        self.yolo_model = None
+                        self.face_cascade = cv2.CascadeClassifier(
+                            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+                        )
             
             if self.yolo_model and torch.cuda.is_available():
                 try:

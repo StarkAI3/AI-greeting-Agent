@@ -33,3 +33,7 @@ outputs/
 # Ignore other system files
 .DS_Store
 Thumbs.db
+
+# Runtime logs
+camera.log
+enroll.log
