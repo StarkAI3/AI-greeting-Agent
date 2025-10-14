@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 # Local model
 from model3 import FaceRecognitionModel
+from tts_service import IndicParlerTTS, GreetingManager
 
 
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +28,8 @@ face_model = None
 current_model_type = "enhanced"
 camera_active = False
 camera_cap = None
+tts_service = None
+greeting_manager = None
 
 
 def get_current_model():
@@ -40,7 +43,7 @@ def ensure_dirs():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global face_model
+    global face_model, tts_service, greeting_manager
     ensure_dirs()
     # Optional: load dotenv
     try:
@@ -60,6 +63,16 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to initialize model: {e}")
             face_model = None
+    
+    # Initialize TTS service for greetings
+    try:
+        tts_service = IndicParlerTTS()
+        greeting_manager = GreetingManager(tts_service, cooldown_minutes=5)
+        logger.info("✅ TTS Greeting service initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize TTS service: {e}")
+        tts_service = None
+        greeting_manager = None
 
     yield
 
@@ -69,6 +82,13 @@ async def lifespan(app: FastAPI):
     if camera_cap is not None:
         try:
             camera_cap.release()
+        except Exception:
+            pass
+    
+    # Cleanup TTS service
+    if tts_service:
+        try:
+            tts_service.cleanup()
         except Exception:
             pass
 
@@ -183,7 +203,7 @@ async def stop_camera():
 
 
 def _frame_generator():
-    global camera_active, camera_cap
+    global camera_active, camera_cap, greeting_manager
 
     # Try backends suitable for Linux first
     for backend in [cv2.CAP_V4L2, cv2.CAP_ANY]:
@@ -240,6 +260,13 @@ def _frame_generator():
                                         score = m.score
                                         if score > 0.7:
                                             name = m.metadata.get('name', 'Unknown')
+                                            
+                                            # 🎤 Greet the recognized person with TTS
+                                            if greeting_manager:
+                                                try:
+                                                    greeting_manager.greet_if_needed(name, score)
+                                                except Exception as greet_err:
+                                                    logger.error(f"Greeting error: {greet_err}")
                                 except Exception:
                                     pass
                             cur.append({"bbox": (x1, y1, x2, y2), "name": name, "score": score})
@@ -275,6 +302,48 @@ def _frame_generator():
 @app.get("/api/camera/stream")
 async def camera_stream():
     return StreamingResponse(_frame_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+
+@app.get("/api/greeting/stats")
+async def greeting_stats():
+    """Get greeting statistics"""
+    if greeting_manager:
+        return greeting_manager.get_stats()
+    return {"error": "Greeting manager not initialized"}
+
+
+@app.post("/api/greeting/reset")
+async def reset_greeting_cooldown(name: str = None):
+    """Reset greeting cooldown for a person or all people"""
+    if greeting_manager:
+        greeting_manager.reset_cooldown(name)
+        return {"success": True, "message": f"Cooldown reset for {name or 'all people'}"}
+    return JSONResponse({"success": False, "message": "Greeting manager not initialized"}, status_code=500)
+
+
+@app.post("/api/greeting/test")
+async def test_greeting(name: str = "Test User"):
+    """Test the greeting system"""
+    if greeting_manager and tts_service:
+        try:
+            success = tts_service.greet_person(name)
+            return {"success": success, "message": f"Test greeting for {name}"}
+        except Exception as e:
+            return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+    return JSONResponse({"success": False, "message": "TTS service not initialized"}, status_code=500)
+
+
+@app.post("/api/greeting/config")
+async def update_greeting_config(voice: str = None, speed: float = None):
+    """Update TTS voice configuration"""
+    if tts_service:
+        try:
+            tts_service.set_voice_config(voice, speed)
+            return {"success": True, "message": "Voice configuration updated", 
+                    "config": tts_service.voice_config}
+        except Exception as e:
+            return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+    return JSONResponse({"success": False, "message": "TTS service not initialized"}, status_code=500)
 
 
 if __name__ == "__main__":

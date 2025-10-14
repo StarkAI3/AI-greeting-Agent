@@ -3,14 +3,32 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>📹 Real-time Camera</title>
+  <title>📹 Real-time Camera with TTS Greeting</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 960px; margin: 24px auto; padding: 0 12px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 1100px; margin: 24px auto; padding: 0 12px; }
     .row { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
-    button { padding: 10px 16px; border-radius: 8px; border: 0; background: #4ECDC4; color: #fff; cursor: pointer; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+    button { padding: 10px 16px; border-radius: 8px; border: 0; background: #4ECDC4; color: #fff; cursor: pointer; font-size: 14px; }
     button.secondary { background: #6c757d; }
-    #status { padding: 8px 12px; background: #f8f9fa; border-radius: 8px; }
-    img { width: 100%; max-width: 860px; border: 2px solid #e9ecef; border-radius: 12px; }
+    button.danger { background: #dc3545; }
+    button.success { background: #28a745; }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status-box { padding: 12px 16px; background: #f8f9fa; border-radius: 8px; margin: 8px 0; }
+    .card { background: #fff; border: 2px solid #e9ecef; border-radius: 12px; padding: 16px; }
+    img { width: 100%; max-width: 100%; border: 2px solid #e9ecef; border-radius: 12px; }
+    h3 { margin: 0 0 12px 0; color: #495057; font-size: 18px; }
+    .stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e9ecef; }
+    .stat:last-child { border: 0; }
+    .stat-label { color: #6c757d; font-weight: 500; }
+    .stat-value { color: #212529; font-weight: 600; }
+    input[type="text"] { padding: 8px 12px; border: 2px solid #e9ecef; border-radius: 6px; width: 200px; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .badge.success { background: #d4edda; color: #155724; }
+    .badge.warning { background: #fff3cd; color: #856404; }
+    @media (max-width: 768px) {
+      .grid { grid-template-columns: 1fr; }
+    }
   </style>
   <script>
     async function startCam(){
@@ -18,33 +36,184 @@
       const r = await fetch('/api/camera/start', { method: 'POST' });
       const j = await r.json();
       if(j.success){
-        setStatus('Camera running');
+        setStatus('Camera running 🎥');
         document.getElementById('stream').src = '/api/camera/stream?t=' + Date.now();
+        // Start auto-refresh for greeting stats
+        startStatsRefresh();
       } else {
         setStatus('Error: ' + j.message, true);
       }
     }
+    
     async function stopCam(){
       await fetch('/api/camera/stop', { method: 'POST' });
       setStatus('Camera stopped');
       document.getElementById('stream').src = '';
+      stopStatsRefresh();
     }
+    
     function setStatus(msg, isError){
       const el = document.getElementById('status');
       el.textContent = msg;
       el.style.background = isError ? '#ffebee' : '#e8f5e9';
       el.style.color = isError ? '#c62828' : '#2e7d32';
     }
+    
+    // TTS Greeting Functions
+    async function testGreeting(){
+      const name = document.getElementById('testName').value || 'Test User';
+      setTTSStatus('Testing greeting...', false);
+      try {
+        const r = await fetch('/api/greeting/test?name=' + encodeURIComponent(name), { method: 'POST' });
+        const j = await r.json();
+        if(j.success){
+          setTTSStatus('✅ Greeting sent! Listen to your speakers.', false);
+        } else {
+          setTTSStatus('❌ Failed: ' + j.message, true);
+        }
+      } catch(e) {
+        setTTSStatus('❌ Error: ' + e.message, true);
+      }
+    }
+    
+    async function resetCooldown(){
+      setTTSStatus('Resetting cooldowns...', false);
+      try {
+        const r = await fetch('/api/greeting/reset', { method: 'POST' });
+        const j = await r.json();
+        setTTSStatus('✅ ' + j.message, false);
+        loadGreetingStats();
+      } catch(e) {
+        setTTSStatus('❌ Error: ' + e.message, true);
+      }
+    }
+    
+    async function loadGreetingStats(){
+      try {
+        const r = await fetch('/api/greeting/stats');
+        const j = await r.json();
+        
+        document.getElementById('totalGreeted').textContent = j.total_people_greeted || 0;
+        document.getElementById('cooldownMinutes').textContent = j.cooldown_minutes || 5;
+        
+        // Show last greeted people
+        const lastGreetedDiv = document.getElementById('lastGreeted');
+        if(j.last_greeted && Object.keys(j.last_greeted).length > 0){
+          let html = '<div style="max-height: 150px; overflow-y: auto;">';
+          for(const [name, time] of Object.entries(j.last_greeted)){
+            const timeStr = new Date(time).toLocaleTimeString();
+            html += `<div class="stat"><span>${name}</span><span class="badge success">${timeStr}</span></div>`;
+          }
+          html += '</div>';
+          lastGreetedDiv.innerHTML = html;
+        } else {
+          lastGreetedDiv.innerHTML = '<div style="color: #6c757d; font-style: italic;">No greetings yet</div>';
+        }
+      } catch(e) {
+        console.error('Failed to load greeting stats:', e);
+      }
+    }
+    
+    function setTTSStatus(msg, isError){
+      const el = document.getElementById('ttsStatus');
+      el.textContent = msg;
+      el.style.background = isError ? '#ffebee' : '#e8f5e9';
+      el.style.color = isError ? '#c62828' : '#2e7d32';
+    }
+    
+    let statsInterval;
+    function startStatsRefresh(){
+      loadGreetingStats();
+      statsInterval = setInterval(loadGreetingStats, 5000); // Refresh every 5s
+    }
+    
+    function stopStatsRefresh(){
+      if(statsInterval) clearInterval(statsInterval);
+    }
+    
+    // Load stats on page load
+    window.addEventListener('DOMContentLoaded', function(){
+      loadGreetingStats();
+    });
   </script>
 </head>
 <body>
-  <h2>📹 Real-time Camera Recognition</h2>
-  <div id="status">Idle</div>
-  <div class="row">
-    <button onclick="startCam()">Start</button>
-    <button class="secondary" onclick="stopCam()">Stop</button>
+  <h2>📹 Real-time Camera Recognition with 🎤 TTS Greeting</h2>
+  
+  <div class="grid">
+    <!-- Camera Feed -->
+    <div>
+      <div class="card">
+        <h3>📹 Camera Feed</h3>
+        <div class="status-box" id="status">Idle</div>
+        <div class="row">
+          <button onclick="startCam()">▶️ Start Camera</button>
+          <button class="secondary" onclick="stopCam()">⏹️ Stop Camera</button>
+        </div>
+        <img id="stream" alt="Live camera stream" style="margin-top: 12px;" />
+      </div>
+    </div>
+    
+    <!-- TTS Greeting Controls -->
+    <div>
+      <div class="card" style="margin-bottom: 16px;">
+        <h3>🎤 TTS Greeting Controls</h3>
+        <div class="status-box" id="ttsStatus">Greeting system ready</div>
+        
+        <div style="margin: 12px 0;">
+          <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #495057;">Test Greeting</label>
+          <div class="row">
+            <input type="text" id="testName" placeholder="Enter name..." value="Rajesh Kumar" />
+            <button class="success" onclick="testGreeting()">🔊 Test</button>
+          </div>
+          <div style="margin-top: 8px; font-size: 13px; color: #6c757d;">
+            Test the TTS system with any name
+          </div>
+        </div>
+        
+        <div style="margin: 16px 0;">
+          <button class="danger" onclick="resetCooldown()">🔄 Reset All Cooldowns</button>
+          <div style="margin-top: 8px; font-size: 13px; color: #6c757d;">
+            Allow immediate re-greeting of all people
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>📊 Greeting Statistics</h3>
+        <div class="stat">
+          <span class="stat-label">Total People Greeted</span>
+          <span class="stat-value" id="totalGreeted">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Cooldown Period</span>
+          <span class="stat-value"><span id="cooldownMinutes">5</span> minutes</span>
+        </div>
+        <div style="margin-top: 12px;">
+          <div style="font-weight: 500; margin-bottom: 8px; color: #495057;">Recently Greeted:</div>
+          <div id="lastGreeted">
+            <div style="color: #6c757d; font-style: italic;">Loading...</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-top: 16px; background: #f8f9fa;">
+        <h3>ℹ️ How It Works</h3>
+        <ul style="margin: 8px 0; padding-left: 20px; color: #495057; font-size: 14px;">
+          <li>System detects and recognizes faces in real-time</li>
+          <li>Greets recognized people with Indian accent TTS</li>
+          <li>Uses 5-minute cooldown to avoid repetitive greetings</li>
+          <li>Supports Indian names with accurate pronunciation</li>
+          <li>Greetings: "Namaste", "Shuprabhaat", "Good morning", etc.</li>
+        </ul>
+      </div>
+    </div>
   </div>
-  <img id="stream" alt="Live stream" />
+  
+  <div style="margin-top: 24px; padding: 16px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #2196F3;">
+    <strong style="color: #1976D2;">💡 Tip:</strong> 
+    <span style="color: #495057;">Start the camera to see real-time face recognition with automatic voice greetings. The system will greet recognized individuals with personalized messages in Indian accent!</span>
+  </div>
 </body>
 </html>
 

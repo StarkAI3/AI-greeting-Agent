@@ -38,3 +38,10 @@ psutil==5.9.6
 fastapi
 uvicorn[standard]
 python-multipart
+
+# TTS and Audio for Indic Parler TTS
+pygame==2.5.2
+pyttsx3==2.90
+python-dotenv==1.0.0
+gTTS==2.6.1
+azure-cognitiveservices-speech==1.38.0

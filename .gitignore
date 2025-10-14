@@ -37,3 +37,21 @@ Thumbs.db
 # Runtime logs
 camera.log
 enroll.log
+
+# TTS/audio cache and logs
+audio_cache/
+*.log
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+
+# Editors/IDE
+.vscode/
+.idea/
+
+# Coverage
+.coverage
+coverage.xml
