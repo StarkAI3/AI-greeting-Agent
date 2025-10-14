@@ -16,18 +16,63 @@
   <h2>👤 Enroll New Face</h2>
   <form id="f">
     <label for="faceName">Name</label>
-    <input id="faceName" name="faceName" required />
+    <input id="faceName" name="faceName" placeholder="Enter person's full name" required />
 
     <label for="faceId">Face ID</label>
-    <input id="faceId" name="faceId" required />
+    <input id="faceId" name="faceId" placeholder="Enter unique face ID (e.g., FACE001)" required />
 
-    <label for="personType">Person Type</label>
+    <label for="employeeId">Employee ID</label>
+    <input id="employeeId" name="employeeId" placeholder="Enter employee ID (optional)" />
+
+    <label for="position">Position</label>
+    <input id="position" name="position" placeholder="Enter job title or position (optional)" />
+
+    <label for="department">Department</label>
+    <input id="department" name="department" placeholder="Enter department (optional)" />
+
+    <label for="dateOfBirth">Date of Birth</label>
+    <input id="dateOfBirth" name="dateOfBirth" placeholder="dd/mm/yyyy" />
+
+    <label for="joiningDate">Joining Date</label>
+    <input id="joiningDate" name="joiningDate" placeholder="dd/mm/yyyy" />
+
+    <label for="phoneNumber">Phone Number</label>
+    <input id="phoneNumber" name="phoneNumber" placeholder="Enter phone number (optional)" />
+
+    <label for="personType">Who are they?</label>
     <select id="personType" name="personType" required>
       <option value="">Select</option>
       <option value="employee">Employee</option>
       <option value="visitor">Visitor</option>
       <option value="guest">Guest</option>
     </select>
+
+    <label for="specialNotes">Special Notes (Optional)</label>
+    <input id="specialNotes" name="specialNotes" placeholder="e.g., VIP client, first time visitor, delivery person" />
+
+    <label for="purposeOfVisit">Purpose of Visit (Optional)</label>
+    <input id="purposeOfVisit" name="purposeOfVisit" placeholder="Enter purpose of visit (optional)" />
+
+    <label for="currentProject">Current Project</label>
+    <input id="currentProject" name="currentProject" placeholder="e.g., AI Development, Marketing Campaign..." />
+
+    <label for="teamSize">Team Size</label>
+    <input id="teamSize" name="teamSize" type="number" min="0" placeholder="Number of team members" />
+
+    <label for="officeLocation">Office Location</label>
+    <input id="officeLocation" name="officeLocation" placeholder="e.g., Floor 3, Building A, Mumbai..." />
+
+    <label for="workSchedule">Work Schedule</label>
+    <input id="workSchedule" name="workSchedule" placeholder="Morning (10 AM - 7 PM)" />
+
+    <label for="skills">Skills (comma-separated)</label>
+    <input id="skills" name="skills" placeholder="e.g., Python, Machine Learning, Leadership..." />
+
+    <label for="interests">Interests (comma-separated)</label>
+    <input id="interests" name="interests" placeholder="e.g., Music, Sports, Technology, Travel..." />
+
+    <label for="emergencyContact">Emergency Contact</label>
+    <input id="emergencyContact" name="emergencyContact" placeholder="Emergency contact number" />
 
     <label for="enrollImages">Face Images (up to 5)</label>
     <input id="enrollImages" name="enrollImages" type="file" accept="image/*" multiple required />

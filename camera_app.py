@@ -16,7 +16,11 @@ from fastapi.staticfiles import StaticFiles
 
 # Local model
 from model3 import FaceRecognitionModel
-from tts_service import IndicParlerTTS, GreetingManager
+# Greeting service is optional; guard import so server still starts if module is missing
+try:
+    from greeting_service import GreetingManager  # type: ignore
+except Exception:
+    GreetingManager = None  # type: ignore
 
 
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +32,6 @@ face_model = None
 current_model_type = "enhanced"
 camera_active = False
 camera_cap = None
-tts_service = None
 greeting_manager = None
 
 
@@ -43,15 +46,16 @@ def ensure_dirs():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global face_model, tts_service, greeting_manager
+    global face_model, greeting_manager
     ensure_dirs()
-    # Optional: load dotenv
+    # Load environment variables
     try:
         from dotenv import load_dotenv
         load_dotenv()
     except Exception:
         pass
 
+    # Initialize face recognition model
     api_key = os.getenv("PINECONE_API_KEY")
     if not api_key:
         logger.warning("PINECONE_API_KEY not set, running camera without recognition model")
@@ -64,14 +68,26 @@ async def lifespan(app: FastAPI):
             logger.error(f"Failed to initialize model: {e}")
             face_model = None
     
-    # Initialize TTS service for greetings
+    # Initialize Greeting service (Gemini + Sarvam AI)
     try:
-        tts_service = IndicParlerTTS()
-        greeting_manager = GreetingManager(tts_service, cooldown_minutes=5)
-        logger.info("✅ TTS Greeting service initialized")
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        sarvam_key = os.getenv("SARVAM_API_KEY")
+        
+        if GreetingManager and gemini_key and sarvam_key:
+            greeting_manager = GreetingManager(
+                gemini_api_key=gemini_key,
+                sarvam_api_key=sarvam_key,
+                cooldown_minutes=5
+            )
+            logger.info("✅ Greeting service initialized (Gemini + Sarvam AI)")
+        else:
+            if not gemini_key or not sarvam_key:
+                logger.warning("⚠️ GEMINI_API_KEY or SARVAM_API_KEY not set in .env file")
+            else:
+                logger.warning("Greeting service unavailable (greeting_service.py missing)")
+            greeting_manager = None
     except Exception as e:
-        logger.error(f"Failed to initialize TTS service: {e}")
-        tts_service = None
+        logger.error(f"Failed to initialize greeting service: {e}")
         greeting_manager = None
 
     yield
@@ -85,10 +101,10 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
     
-    # Cleanup TTS service
-    if tts_service:
+    # Cleanup greeting service
+    if greeting_manager:
         try:
-            tts_service.cleanup()
+            greeting_manager.cleanup()
         except Exception:
             pass
 
@@ -261,7 +277,7 @@ def _frame_generator():
                                         if score > 0.7:
                                             name = m.metadata.get('name', 'Unknown')
                                             
-                                            # 🎤 Greet the recognized person with TTS
+                                            # 🎤 Greet the recognized person (Gemini + Sarvam AI)
                                             if greeting_manager:
                                                 try:
                                                     greeting_manager.greet_if_needed(name, score)
@@ -324,26 +340,26 @@ async def reset_greeting_cooldown(name: str = None):
 @app.post("/api/greeting/test")
 async def test_greeting(name: str = "Test User"):
     """Test the greeting system"""
-    if greeting_manager and tts_service:
+    if greeting_manager:
         try:
-            success = tts_service.greet_person(name)
+            success = greeting_manager.greet_person(name)
             return {"success": success, "message": f"Test greeting for {name}"}
         except Exception as e:
             return JSONResponse({"success": False, "message": str(e)}, status_code=500)
-    return JSONResponse({"success": False, "message": "TTS service not initialized"}, status_code=500)
+    return JSONResponse({"success": False, "message": "Greeting service not initialized"}, status_code=500)
 
 
 @app.post("/api/greeting/config")
-async def update_greeting_config(voice: str = None, speed: float = None):
-    """Update TTS voice configuration"""
-    if tts_service:
+async def update_greeting_config(speaker: str = None, pace: float = None, language: str = None):
+    """Update Sarvam AI TTS voice configuration"""
+    if greeting_manager:
         try:
-            tts_service.set_voice_config(voice, speed)
+            greeting_manager.tts_service.set_voice_config(speaker, pace, language)
             return {"success": True, "message": "Voice configuration updated", 
-                    "config": tts_service.voice_config}
+                    "config": greeting_manager.tts_service.default_config}
         except Exception as e:
             return JSONResponse({"success": False, "message": str(e)}, status_code=500)
-    return JSONResponse({"success": False, "message": "TTS service not initialized"}, status_code=500)
+    return JSONResponse({"success": False, "message": "Greeting service not initialized"}, status_code=500)
 
 
 if __name__ == "__main__":

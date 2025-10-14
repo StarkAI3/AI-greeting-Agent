@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/home/stark/Desktop/Face-Detection-YOLO"
+ROOT="/home/stark/Desktop/voice-assistant"
 VENV="$ROOT/venv/bin"
 CAM_PORT=6001
 ENR_PORT=6002
 
 mkdir -p "$ROOT"
+
+cd "$ROOT"
 
 echo "Starting Camera app on port $CAM_PORT..."
 nohup "$VENV/uvicorn" camera_app:app \

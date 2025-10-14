@@ -27,7 +27,6 @@ tqdm==4.66.1
 python-dateutil==2.8.2
 
 # Additional dependencies
-requests==2.31.0
 scikit-learn==1.4.0
 
 # Optional dependencies for enhanced functionality
@@ -39,9 +38,14 @@ fastapi
 uvicorn[standard]
 python-multipart
 
-# TTS and Audio for Indic Parler TTS
-pygame==2.5.2
-pyttsx3==2.90
+# Environment variables
 python-dotenv==1.0.0
-gTTS==2.6.1
-azure-cognitiveservices-speech==1.38.0
+
+# AI APIs for greeting system
+google-generativeai==0.8.3
+
+# Audio playback
+pygame==2.5.2
+
+# HTTP requests for Sarvam AI TTS
+requests==2.31.0

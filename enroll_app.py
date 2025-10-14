@@ -58,6 +58,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
+ensure_dirs()  # ensure static directories exist before mounting
 app = FastAPI(title="Face Enrollment Service", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
@@ -83,15 +84,65 @@ async def index():
         <body style=\"font-family: sans-serif; max-width: 900px; margin: 20px auto;\">
         <h2>👤 Enroll New Face</h2>
         <form id=\"f\">
-          <div><label>Name</label><br/><input name=\"faceName\" required></div>
-          <div><label>Face ID</label><br/><input name=\"faceId\" required></div>
-          <div><label>Person Type</label><br/>
+          <div><label>Name</label><br/>
+            <input name=\"faceName\" placeholder=\"Enter person's full name\" required>
+          </div>
+          <div><label>Face ID</label><br/>
+            <input name=\"faceId\" placeholder=\"Enter unique face ID (e.g., FACE001)\" required>
+          </div>
+          <div><label>Employee ID</label><br/>
+            <input name=\"employeeId\" placeholder=\"Enter employee ID (optional)\">
+          </div>
+          <div><label>Position</label><br/>
+            <input name=\"position\" placeholder=\"Enter job title or position (optional)\">
+          </div>
+          <div><label>Department</label><br/>
+            <input name=\"department\" placeholder=\"Enter department (optional)\">
+          </div>
+          <div><label>Date of Birth</label><br/>
+            <input name=\"dateOfBirth\" placeholder=\"dd/mm/yyyy\">
+          </div>
+          <div><label>Joining Date</label><br/>
+            <input name=\"joiningDate\" placeholder=\"dd/mm/yyyy\">
+          </div>
+          <div><label>Phone Number</label><br/>
+            <input name=\"phoneNumber\" placeholder=\"Enter phone number (optional)\">
+          </div>
+          <div><label>Who are they?</label><br/>
             <select name=\"personType\" required>
               <option value=\"employee\">Employee</option>
               <option value=\"visitor\">Visitor</option>
               <option value=\"guest\">Guest</option>
             </select>
           </div>
+          <div><label>Special Notes (Optional)</label><br/>
+            <input name=\"specialNotes\" placeholder=\"e.g., VIP client, first time visitor, delivery person\">
+          </div>
+          <div><label>Purpose of Visit (Optional)</label><br/>
+            <input name=\"purposeOfVisit\" placeholder=\"Enter purpose of visit (optional)\">
+          </div>
+          <div><label>Current Project</label><br/>
+            <input name=\"currentProject\" placeholder=\"e.g., AI Development, Marketing Campaign...\">
+          </div>
+          <div><label>Team Size</label><br/>
+            <input name=\"teamSize\" placeholder=\"Number of team members\" type=\"number\" min=\"0\">
+          </div>
+          <div><label>Office Location</label><br/>
+            <input name=\"officeLocation\" placeholder=\"e.g., Floor 3, Building A, Mumbai...\">
+          </div>
+          <div><label>Work Schedule</label><br/>
+            <input name=\"workSchedule\" placeholder=\"Morning (10 AM - 7 PM)\">
+          </div>
+          <div><label>Skills (comma-separated)</label><br/>
+            <input name=\"skills\" placeholder=\"e.g., Python, Machine Learning, Leadership...\">
+          </div>
+          <div><label>Interests (comma-separated)</label><br/>
+            <input name=\"interests\" placeholder=\"e.g., Music, Sports, Technology, Travel...\">
+          </div>
+          <div><label>Emergency Contact</label><br/>
+            <input name=\"emergencyContact\" placeholder=\"Emergency contact number\">
+          </div>
+          <hr/>
           <div><label>Images (up to 5)</label><br/><input name=\"enrollImages\" type=\"file\" accept=\"image/*\" multiple required></div>
           <button>Enroll</button>
         </form>
@@ -135,6 +186,13 @@ async def enroll(
     phoneNumber: str = Form(""),
     specialNotes: str = Form(""),
     purposeOfVisit: str = Form(""),
+    currentProject: str = Form(""),
+    teamSize: str = Form(""),
+    officeLocation: str = Form(""),
+    workSchedule: str = Form(""),
+    skills: str = Form(""),
+    interests: str = Form(""),
+    emergencyContact: str = Form(""),
     enrollImages: List[UploadFile] = File(...),
 ):
     if face_model is None:
@@ -168,6 +226,13 @@ async def enroll(
             "phone_number": phoneNumber,
             "special_notes": specialNotes,
             "purpose_of_visit": purposeOfVisit,
+            "current_project": currentProject,
+            "team_size": teamSize,
+            "office_location": officeLocation,
+            "work_schedule": workSchedule,
+            "skills": [s.strip() for s in skills.split(',') if s.strip()] if skills else [],
+            "interests": [s.strip() for s in interests.split(',') if s.strip()] if interests else [],
+            "emergency_contact": emergencyContact,
             "enrollment_date": datetime.now().isoformat(),
             "image_count": len(saved_paths),
             "image_paths": saved_paths,

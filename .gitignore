@@ -30,6 +30,13 @@ __pycache__/
 uploads/
 outputs/
 
+# Ignore enrolled faces (PII) and artifacts
+enrolled_faces/
+*.wav
+
+# Ignore large model weights/binaries
+Models/**/*.pt
+
 # Ignore other system files
 .DS_Store
 Thumbs.db
