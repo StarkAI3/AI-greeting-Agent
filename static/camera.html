@@ -3,218 +3,644 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>📹 Real-time Camera with TTS Greeting</title>
+  <title>🎤 AI Greeting Assistant</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 1100px; margin: 24px auto; padding: 0 12px; }
-    .row { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
-    button { padding: 10px 16px; border-radius: 8px; border: 0; background: #4ECDC4; color: #fff; cursor: pointer; font-size: 14px; }
-    button.secondary { background: #6c757d; }
-    button.danger { background: #dc3545; }
-    button.success { background: #28a745; }
-    button:hover { opacity: 0.9; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .status-box { padding: 12px 16px; background: #f8f9fa; border-radius: 8px; margin: 8px 0; }
-    .card { background: #fff; border: 2px solid #e9ecef; border-radius: 12px; padding: 16px; }
-    img { width: 100%; max-width: 100%; border: 2px solid #e9ecef; border-radius: 12px; }
-    h3 { margin: 0 0 12px 0; color: #495057; font-size: 18px; }
-    .stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e9ecef; }
-    .stat:last-child { border: 0; }
-    .stat-label { color: #6c757d; font-weight: 500; }
-    .stat-value { color: #212529; font-weight: 600; }
-    input[type="text"] { padding: 8px 12px; border: 2px solid #e9ecef; border-radius: 6px; width: 200px; }
-    .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-    .badge.success { background: #d4edda; color: #155724; }
-    .badge.warning { background: #fff3cd; color: #856404; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #3a3a3a 0%, #4d4d4d 100%);
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Stark Logo */
+    .logo-container {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 100;
+    }
+
+    .logo {
+      width: 220px;
+      height: auto;
+      filter: drop-shadow(0 4px 8px rgba(255, 165, 0, 0.3));
+      transition: transform 0.3s ease;
+    }
+
+    .logo:hover {
+      transform: scale(1.05);
+    }
+
+    /* Camera Toggle Button */
+    .camera-toggle-container {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+    }
+
+    .toggle-wrapper {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 20px;
+      border-radius: 50px;
+      box-shadow: 0 8px 32px rgba(255, 165, 0, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 165, 0, 0.1);
+    }
+
+    .toggle-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      white-space: nowrap;
+    }
+
+    /* Custom Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      width: 60px;
+      height: 30px;
+      background: #ccc;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .toggle-switch.active {
+      background: #FFA500;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch.active .toggle-slider {
+      transform: translateX(30px);
+    }
+
+    .camera-status {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #666;
+      animation: pulse 2s infinite;
+    }
+
+    .toggle-switch.active ~ .camera-status {
+      background: #FFA500;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Main Content Container */
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      position: relative;
+    }
+
+    /* Animated Assistant Character */
+    .assistant-container {
+      position: relative;
+      margin-top: 40px;
+    }
+
+    .assistant-character {
+      width: 450px;
+      height: 450px;
+      position: relative;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-20px);
+      }
+    }
+
+    /* Robot/Assistant SVG Design */
+    .robot-body {
+      position: relative;
+      width: 300px;
+      height: 360px;
+      margin: 0 auto;
+      transition: filter 0.5s ease;
+    }
+    
+    .robot-body.active {
+      filter: drop-shadow(0 0 30px rgba(255, 165, 0, 0.5));
+    }
+
+    .robot-head {
+      width: 210px;
+      height: 210px;
+      background: linear-gradient(145deg, #ffffff, #f5f5f5);
+      border-radius: 50%;
+      margin: 0 auto;
+      position: relative;
+      box-shadow: 0 15px 40px rgba(255, 165, 0, 0.3);
+      border: 6px solid #FFA500;
+    }
+
+    .robot-antenna {
+      width: 6px;
+      height: 45px;
+      background: #FFA500;
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .robot-antenna::after {
+      content: '';
+      width: 18px;
+      height: 18px;
+      background: #FFA500;
+      border-radius: 50%;
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: blink 1s infinite;
+      box-shadow: 0 0 20px #FFA500;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .robot-eyes {
+      display: flex;
+      justify-content: space-around;
+      padding: 0 45px;
+      margin-top: 65px;
+    }
+
+    .eye {
+      width: 45px;
+      height: 45px;
+      background: #2a2a2a;
+      border-radius: 50%;
+      position: relative;
+      animation: eyeMove 4s infinite;
+      border: 3px solid #FFA500;
+    }
+
+    .eye::after {
+      content: '';
+      width: 15px;
+      height: 15px;
+      background: #FFA500;
+      border-radius: 50%;
+      position: absolute;
+      top: 9px;
+      left: 9px;
+      box-shadow: 0 0 10px #FFA500;
+    }
+
+    @keyframes eyeMove {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(3px); }
+      75% { transform: translateX(-3px); }
+    }
+
+    .robot-mouth {
+      width: 90px;
+      height: 45px;
+      border: 5px solid #FFA500;
+      border-top: none;
+      border-radius: 0 0 90px 90px;
+      margin: 20px auto 0;
+      position: relative;
+    }
+
+    .robot-torso {
+      width: 180px;
+      height: 120px;
+      background: linear-gradient(145deg, #FFA500, #FF8C00);
+      margin: 20px auto 0;
+      border-radius: 30px;
+      position: relative;
+      box-shadow: 0 12px 30px rgba(255, 165, 0, 0.4);
+      border: 3px solid #2a2a2a;
+    }
+
+    .robot-light {
+      width: 12px;
+      height: 12px;
+      background: #00ff00;
+      border-radius: 50%;
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: lightPulse 1.5s infinite;
+    }
+
+    @keyframes lightPulse {
+      0%, 100% { box-shadow: 0 0 10px #00ff00; }
+      50% { box-shadow: 0 0 30px #00ff00; }
+    }
+
+    .robot-arms {
+      display: flex;
+      justify-content: space-between;
+      width: 270px;
+      margin: -75px auto 0;
+      position: relative;
+      z-index: -1;
+    }
+
+    .arm {
+      width: 35px;
+      height: 105px;
+      background: linear-gradient(145deg, #FFA500, #FF8C00);
+      border-radius: 20px;
+      animation: wave 2s ease-in-out infinite;
+      border: 2px solid #2a2a2a;
+      box-shadow: 0 5px 15px rgba(255, 165, 0, 0.3);
+    }
+
+    .arm.left {
+      animation-delay: 0s;
+    }
+
+    .arm.right {
+      animation-delay: 1s;
+    }
+
+    @keyframes wave {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(-15deg); }
+    }
+
+    /* Status Text */
+    .status-text {
+      text-align: center;
+      margin-top: 40px;
+      color: white;
+      font-size: 24px;
+      font-weight: 600;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      animation: fadeInOut 2s ease-in-out infinite;
+    }
+
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .subtitle {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 16px;
+      margin-top: 10px;
+      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Stats Panel at Bottom */
+    .stats-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.98);
+      padding: 20px 40px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(255, 165, 0, 0.3);
+      backdrop-filter: blur(10px);
+      display: flex;
+      gap: 40px;
+      align-items: center;
+      border: 2px solid rgba(255, 165, 0, 0.2);
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #FFA500;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #2a2a2a;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 5px;
+    }
+
+    /* Floating particles effect */
+    .particle {
+      position: absolute;
+      background: rgba(255, 165, 0, 0.2);
+      border-radius: 50%;
+      animation: floatParticle 15s infinite;
+    }
+
+    @keyframes floatParticle {
+      0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* Responsive */
     @media (max-width: 768px) {
-      .grid { grid-template-columns: 1fr; }
+      .logo {
+        width: 150px;
+      }
+
+      .assistant-character {
+        width: 350px;
+        height: 350px;
+      }
+
+      .robot-body {
+        transform: scale(0.75);
+      }
+
+      .stats-panel {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px 25px;
+      }
+
+      .status-text {
+        font-size: 18px;
+      }
+      
+      .toggle-wrapper {
+        padding: 12px 15px;
+      }
     }
   </style>
+</head>
+<body>
+  <!-- Stark Logo -->
+  <div class="logo-container">
+    <img src="/static/logo.png" alt="Stark Digital" class="logo" onerror="this.src='/static/logo.svg'">
+  </div>
+
+  <!-- Camera Toggle -->
+  <div class="camera-toggle-container">
+    <div class="toggle-wrapper">
+      <span class="toggle-label" id="toggleLabel">Camera OFF</span>
+      <div class="toggle-switch" id="toggleSwitch" onclick="toggleCamera()">
+        <div class="toggle-slider"></div>
+      </div>
+      <div class="camera-status"></div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-container">
+    <!-- Animated Assistant Character -->
+    <div class="assistant-container">
+      <div class="assistant-character">
+        <div class="robot-body">
+          <!-- Head -->
+          <div class="robot-head">
+            <div class="robot-antenna"></div>
+            <div class="robot-eyes">
+              <div class="eye"></div>
+              <div class="eye"></div>
+            </div>
+            <div class="robot-mouth"></div>
+          </div>
+          
+          <!-- Arms -->
+          <div class="robot-arms">
+            <div class="arm left"></div>
+            <div class="arm right"></div>
+          </div>
+          
+          <!-- Torso -->
+          <div class="robot-torso">
+            <div class="robot-light"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Text -->
+    <div class="status-text" id="statusText">
+      👋 AI Greeting Assistant Ready
+    </div>
+    <div class="subtitle" id="subtitleText">
+      Turn on the camera to start recognizing and greeting people
+    </div>
+  </div>
+
+  <!-- Stats Panel -->
+  <div class="stats-panel">
+    <div class="stat-item">
+      <span class="stat-value" id="totalGreeted">0</span>
+      <span class="stat-label">People Greeted</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value" id="activeTime">00:00</span>
+      <span class="stat-label">Active Time</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value" id="lastGreeted">-</span>
+      <span class="stat-label">Last Greeted</span>
+    </div>
+  </div>
+
+  <!-- Background Particles -->
   <script>
-    async function startCam(){
-      setStatus('Starting camera...');
-      const r = await fetch('/api/camera/start', { method: 'POST' });
-      const j = await r.json();
-      if(j.success){
-        setStatus('Camera running 🎥');
-        document.getElementById('stream').src = '/api/camera/stream?t=' + Date.now();
-        // Start auto-refresh for greeting stats
-        startStatsRefresh();
+    // Create floating particles
+    for(let i = 0; i < 15; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      particle.style.width = Math.random() * 10 + 5 + 'px';
+      particle.style.height = particle.style.width;
+      particle.style.left = Math.random() * 100 + '%';
+      particle.style.animationDelay = Math.random() * 15 + 's';
+      particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+      document.body.appendChild(particle);
+    }
+  </script>
+
+  <!-- Hidden image for camera stream (camera works but not visible) -->
+  <img id="stream" style="display:none;" />
+
+  <script>
+    let cameraActive = false;
+    let activeTimeSeconds = 0;
+    let activeTimer = null;
+    let statsRefreshInterval = null;
+
+    // Toggle Camera
+    async function toggleCamera() {
+      if (!cameraActive) {
+        await startCamera();
       } else {
-        setStatus('Error: ' + j.message, true);
+        await stopCamera();
       }
     }
-    
-    async function stopCam(){
-      await fetch('/api/camera/stop', { method: 'POST' });
-      setStatus('Camera stopped');
-      document.getElementById('stream').src = '';
-      stopStatsRefresh();
-    }
-    
-    function setStatus(msg, isError){
-      const el = document.getElementById('status');
-      el.textContent = msg;
-      el.style.background = isError ? '#ffebee' : '#e8f5e9';
-      el.style.color = isError ? '#c62828' : '#2e7d32';
-    }
-    
-    // TTS Greeting Functions
-    async function testGreeting(){
-      const name = document.getElementById('testName').value || 'Test User';
-      setTTSStatus('Testing greeting...', false);
+
+    async function startCamera() {
       try {
-        const r = await fetch('/api/greeting/test?name=' + encodeURIComponent(name), { method: 'POST' });
+        updateStatus('Starting camera...', '⏳');
+        const r = await fetch('/api/camera/start', { method: 'POST' });
         const j = await r.json();
-        if(j.success){
-          setTTSStatus('✅ Greeting sent! Listen to your speakers.', false);
+        
+        if (j.success) {
+          cameraActive = true;
+          document.getElementById('toggleSwitch').classList.add('active');
+          document.getElementById('toggleLabel').textContent = 'Camera ON';
+          updateStatus('Camera Active - Monitoring', '👁️');
+          document.getElementById('subtitleText').textContent = 'AI is watching and ready to greet recognized faces';
+          
+          // Add glow effect to robot
+          document.querySelector('.robot-body').classList.add('active');
+          
+          // Start the hidden camera stream
+          document.getElementById('stream').src = '/api/camera/stream?t=' + Date.now();
+          
+          // Start timers
+          startActiveTimer();
+          startStatsRefresh();
         } else {
-          setTTSStatus('❌ Failed: ' + j.message, true);
+          updateStatus('Failed to start camera', '❌');
         }
-      } catch(e) {
-        setTTSStatus('❌ Error: ' + e.message, true);
+      } catch (e) {
+        updateStatus('Error: ' + e.message, '❌');
       }
     }
-    
-    async function resetCooldown(){
-      setTTSStatus('Resetting cooldowns...', false);
+
+    async function stopCamera() {
       try {
-        const r = await fetch('/api/greeting/reset', { method: 'POST' });
-        const j = await r.json();
-        setTTSStatus('✅ ' + j.message, false);
-        loadGreetingStats();
-      } catch(e) {
-        setTTSStatus('❌ Error: ' + e.message, true);
+        await fetch('/api/camera/stop', { method: 'POST' });
+        cameraActive = false;
+        document.getElementById('toggleSwitch').classList.remove('active');
+        document.getElementById('toggleLabel').textContent = 'Camera OFF';
+        updateStatus('AI Greeting Assistant Ready', '👋');
+        document.getElementById('subtitleText').textContent = 'Turn on the camera to start recognizing and greeting people';
+        
+        // Remove glow effect from robot
+        document.querySelector('.robot-body').classList.remove('active');
+        
+        // Stop the stream
+        document.getElementById('stream').src = '';
+        
+        // Stop timers
+        stopActiveTimer();
+        stopStatsRefresh();
+      } catch (e) {
+        console.error('Error stopping camera:', e);
       }
     }
-    
-    async function loadGreetingStats(){
+
+    function updateStatus(message, emoji) {
+      document.getElementById('statusText').textContent = emoji + ' ' + message;
+    }
+
+    // Active Time Timer
+    function startActiveTimer() {
+      activeTimeSeconds = 0;
+      activeTimer = setInterval(() => {
+        activeTimeSeconds++;
+        const minutes = Math.floor(activeTimeSeconds / 60);
+        const seconds = activeTimeSeconds % 60;
+        document.getElementById('activeTime').textContent = 
+          String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+      }, 1000);
+    }
+
+    function stopActiveTimer() {
+      if (activeTimer) {
+        clearInterval(activeTimer);
+        activeTimer = null;
+      }
+      activeTimeSeconds = 0;
+      document.getElementById('activeTime').textContent = '00:00';
+    }
+
+    // Stats Refresh
+    async function loadGreetingStats() {
       try {
         const r = await fetch('/api/greeting/stats');
         const j = await r.json();
         
+        // Update total greeted
         document.getElementById('totalGreeted').textContent = j.total_people_greeted || 0;
-        document.getElementById('cooldownMinutes').textContent = j.cooldown_minutes || 5;
         
-        // Show last greeted people
-        const lastGreetedDiv = document.getElementById('lastGreeted');
-        if(j.last_greeted && Object.keys(j.last_greeted).length > 0){
-          let html = '<div style="max-height: 150px; overflow-y: auto;">';
-          for(const [name, time] of Object.entries(j.last_greeted)){
-            const timeStr = new Date(time).toLocaleTimeString();
-            html += `<div class="stat"><span>${name}</span><span class="badge success">${timeStr}</span></div>`;
-          }
-          html += '</div>';
-          lastGreetedDiv.innerHTML = html;
+        // Update last greeted
+        if (j.last_greeted && Object.keys(j.last_greeted).length > 0) {
+          const names = Object.keys(j.last_greeted);
+          const lastName = names[names.length - 1];
+          document.getElementById('lastGreeted').textContent = lastName;
         } else {
-          lastGreetedDiv.innerHTML = '<div style="color: #6c757d; font-style: italic;">No greetings yet</div>';
+          document.getElementById('lastGreeted').textContent = '-';
         }
-      } catch(e) {
+      } catch (e) {
         console.error('Failed to load greeting stats:', e);
       }
     }
-    
-    function setTTSStatus(msg, isError){
-      const el = document.getElementById('ttsStatus');
-      el.textContent = msg;
-      el.style.background = isError ? '#ffebee' : '#e8f5e9';
-      el.style.color = isError ? '#c62828' : '#2e7d32';
-    }
-    
-    let statsInterval;
-    function startStatsRefresh(){
+
+    function startStatsRefresh() {
       loadGreetingStats();
-      statsInterval = setInterval(loadGreetingStats, 5000); // Refresh every 5s
+      statsRefreshInterval = setInterval(loadGreetingStats, 3000); // Refresh every 3s
     }
-    
-    function stopStatsRefresh(){
-      if(statsInterval) clearInterval(statsInterval);
+
+    function stopStatsRefresh() {
+      if (statsRefreshInterval) {
+        clearInterval(statsRefreshInterval);
+        statsRefreshInterval = null;
+      }
     }
-    
-    // Load stats on page load
-    window.addEventListener('DOMContentLoaded', function(){
+
+    // Load initial stats
+    window.addEventListener('DOMContentLoaded', function() {
       loadGreetingStats();
     });
   </script>
-</head>
-<body>
-  <h2>📹 Real-time Camera Recognition with 🎤 TTS Greeting</h2>
-  
-  <div class="grid">
-    <!-- Camera Feed -->
-    <div>
-      <div class="card">
-        <h3>📹 Camera Feed</h3>
-        <div class="status-box" id="status">Idle</div>
-        <div class="row">
-          <button onclick="startCam()">▶️ Start Camera</button>
-          <button class="secondary" onclick="stopCam()">⏹️ Stop Camera</button>
-        </div>
-        <img id="stream" alt="Live camera stream" style="margin-top: 12px;" />
-      </div>
-    </div>
-    
-    <!-- TTS Greeting Controls -->
-    <div>
-      <div class="card" style="margin-bottom: 16px;">
-        <h3>🎤 TTS Greeting Controls</h3>
-        <div class="status-box" id="ttsStatus">Greeting system ready</div>
-        
-        <div style="margin: 12px 0;">
-          <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #495057;">Test Greeting</label>
-          <div class="row">
-            <input type="text" id="testName" placeholder="Enter name..." value="Rajesh Kumar" />
-            <button class="success" onclick="testGreeting()">🔊 Test</button>
-          </div>
-          <div style="margin-top: 8px; font-size: 13px; color: #6c757d;">
-            Test the TTS system with any name
-          </div>
-        </div>
-        
-        <div style="margin: 16px 0;">
-          <button class="danger" onclick="resetCooldown()">🔄 Reset All Cooldowns</button>
-          <div style="margin-top: 8px; font-size: 13px; color: #6c757d;">
-            Allow immediate re-greeting of all people
-          </div>
-        </div>
-      </div>
-      
-      <div class="card">
-        <h3>📊 Greeting Statistics</h3>
-        <div class="stat">
-          <span class="stat-label">Total People Greeted</span>
-          <span class="stat-value" id="totalGreeted">0</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Cooldown Period</span>
-          <span class="stat-value"><span id="cooldownMinutes">5</span> minutes</span>
-        </div>
-        <div style="margin-top: 12px;">
-          <div style="font-weight: 500; margin-bottom: 8px; color: #495057;">Recently Greeted:</div>
-          <div id="lastGreeted">
-            <div style="color: #6c757d; font-style: italic;">Loading...</div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="card" style="margin-top: 16px; background: #f8f9fa;">
-        <h3>ℹ️ How It Works</h3>
-        <ul style="margin: 8px 0; padding-left: 20px; color: #495057; font-size: 14px;">
-          <li>System detects and recognizes faces in real-time</li>
-          <li>Greets recognized people with Indian accent TTS</li>
-          <li>Uses 5-minute cooldown to avoid repetitive greetings</li>
-          <li>Supports Indian names with accurate pronunciation</li>
-          <li>Greetings: "Namaste", "Shuprabhaat", "Good morning", etc.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  
-  <div style="margin-top: 24px; padding: 16px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #2196F3;">
-    <strong style="color: #1976D2;">💡 Tip:</strong> 
-    <span style="color: #495057;">Start the camera to see real-time face recognition with automatic voice greetings. The system will greet recognized individuals with personalized messages in Indian accent!</span>
-  </div>
 </body>
 </html>
-
-

@@ -277,10 +277,28 @@ def _frame_generator():
                                         if score > 0.7:
                                             name = m.metadata.get('name', 'Unknown')
                                             
-                                            # 🎤 Greet the recognized person (Gemini + Sarvam AI)
+                                            # 🎤 Greet the recognized person with full details (Gemini + Sarvam AI)
                                             if greeting_manager:
                                                 try:
-                                                    greeting_manager.greet_if_needed(name, score)
+                                                    # Extract all person details from metadata
+                                                    person_details = {
+                                                        'position': m.metadata.get('position', ''),
+                                                        'department': m.metadata.get('department', ''),
+                                                        'current_project': m.metadata.get('current_project', ''),
+                                                        'interests': m.metadata.get('interests', []),
+                                                        'skills': m.metadata.get('skills', []),
+                                                        'office_location': m.metadata.get('office_location', ''),
+                                                        'work_schedule': m.metadata.get('work_schedule', ''),
+                                                        'team_size': m.metadata.get('team_size', ''),
+                                                        'person_type': m.metadata.get('person_type', 'employee'),
+                                                        'special_notes': m.metadata.get('special_notes', ''),
+                                                        'employee_id': m.metadata.get('employee_id', ''),
+                                                        'date_of_birth': m.metadata.get('date_of_birth', ''),
+                                                        'joining_date': m.metadata.get('joining_date', ''),
+                                                        'phone_number': m.metadata.get('phone_number', ''),
+                                                        'purpose_of_visit': m.metadata.get('purpose_of_visit', '')
+                                                    }
+                                                    greeting_manager.greet_if_needed(name, score, person_details)
                                                 except Exception as greet_err:
                                                     logger.error(f"Greeting error: {greet_err}")
                                 except Exception:
@@ -338,23 +356,52 @@ async def reset_greeting_cooldown(name: str = None):
 
 
 @app.post("/api/greeting/test")
-async def test_greeting(name: str = "Test User"):
-    """Test the greeting system"""
+async def test_greeting(
+    name: str = "Test User",
+    position: str = "Software Developer",
+    department: str = "Engineering",
+    interests: str = "AI, Music, Travel"
+):
+    """Test the greeting system with sample person details"""
     if greeting_manager:
         try:
-            success = greeting_manager.greet_person(name)
-            return {"success": success, "message": f"Test greeting for {name}"}
+            # Create sample person details for testing
+            person_details = {
+                'position': position,
+                'department': department,
+                'current_project': 'Face Recognition System',
+                'interests': [i.strip() for i in interests.split(',')],
+                'skills': ['Python', 'Machine Learning', 'Computer Vision'],
+                'person_type': 'employee',
+                'special_notes': 'Always brings positive energy to the team'
+            }
+            success = greeting_manager.greet_person(name, 1.0, person_details)
+            return {"success": success, "message": f"Test greeting for {name} with full details"}
         except Exception as e:
             return JSONResponse({"success": False, "message": str(e)}, status_code=500)
     return JSONResponse({"success": False, "message": "Greeting service not initialized"}, status_code=500)
 
 
 @app.post("/api/greeting/config")
-async def update_greeting_config(speaker: str = None, pace: float = None, language: str = None):
+async def update_greeting_config(
+    speaker: str = None,
+    pace: float = None,
+    language: str = None,
+    pitch: float = None,
+    loudness: float = None,
+    speech_sample_rate: int = None,
+):
     """Update Sarvam AI TTS voice configuration"""
     if greeting_manager:
         try:
-            greeting_manager.tts_service.set_voice_config(speaker, pace, language)
+            greeting_manager.tts_service.set_voice_config(
+                speaker=speaker,
+                pace=pace,
+                language=language,
+                pitch=pitch,
+                loudness=loudness,
+                speech_sample_rate=speech_sample_rate,
+            )
             return {"success": True, "message": "Voice configuration updated", 
                     "config": greeting_manager.tts_service.default_config}
         except Exception as e:

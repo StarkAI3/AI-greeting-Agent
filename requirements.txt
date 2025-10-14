@@ -49,3 +49,6 @@ pygame==2.5.2
 
 # HTTP requests for Sarvam AI TTS
 requests==2.31.0
+
+# Indic transliteration for Marathi name pronunciation - specialized library
+aksharamukha==2.1.1
