@@ -38,12 +38,15 @@
       transform: scale(1.05);
     }
 
-    /* Camera Toggle Button */
+    /* Camera Toggle and Voice Selector */
     .camera-toggle-container {
       position: absolute;
       top: 20px;
       right: 20px;
       z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
     }
 
     .toggle-wrapper {
@@ -56,6 +59,49 @@
       gap: 12px;
       backdrop-filter: blur(10px);
       border: 2px solid rgba(255, 165, 0, 0.1);
+    }
+
+    .voice-selector-wrapper {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 20px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(255, 165, 0, 0.2);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 165, 0, 0.1);
+    }
+
+    .voice-selector-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .voice-select {
+      width: 100%;
+      padding: 10px 15px;
+      border: 2px solid #FFA500;
+      border-radius: 12px;
+      background: white;
+      color: #333;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .voice-select:hover {
+      border-color: #FF8C00;
+      box-shadow: 0 2px 8px rgba(255, 165, 0, 0.3);
+    }
+
+    .voice-select:focus {
+      border-color: #FF8C00;
+      box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.2);
     }
 
     .toggle-label {
@@ -395,6 +441,30 @@
         width: 150px;
       }
 
+      .camera-toggle-container {
+        top: 15px;
+        right: 15px;
+        gap: 10px;
+      }
+
+      .voice-selector-wrapper {
+        padding: 12px 15px;
+      }
+
+      .voice-selector-label {
+        font-size: 11px;
+        margin-bottom: 6px;
+      }
+
+      .voice-select {
+        font-size: 13px;
+        padding: 8px 12px;
+      }
+
+      .toggle-wrapper {
+        padding: 12px 15px;
+      }
+
       .assistant-character {
         width: 350px;
         height: 350px;
@@ -413,10 +483,6 @@
       .status-text {
         font-size: 18px;
       }
-      
-      .toggle-wrapper {
-        padding: 12px 15px;
-      }
     }
   </style>
 </head>
@@ -426,8 +492,18 @@
     <img src="/static/logo.png" alt="Stark Digital" class="logo" onerror="this.src='/static/logo.svg'">
   </div>
 
-  <!-- Camera Toggle -->
+  <!-- Camera Toggle and Voice Selector -->
   <div class="camera-toggle-container">
+    <!-- Voice Selector -->
+    <div class="voice-selector-wrapper">
+      <label class="voice-selector-label">🎤 Voice Selection</label>
+      <select class="voice-select" id="voiceSelect" onchange="changeVoice()">
+        <option value="sarvam">Sarvam Anushka (Indian)</option>
+        <option value="elevenlabs">ElevenLabs Arfa (Premium)</option>
+      </select>
+    </div>
+
+    <!-- Camera Toggle -->
     <div class="toggle-wrapper">
       <span class="toggle-label" id="toggleLabel">Camera OFF</span>
       <div class="toggle-switch" id="toggleSwitch" onclick="toggleCamera()">
@@ -640,7 +716,85 @@
     // Load initial stats
     window.addEventListener('DOMContentLoaded', function() {
       loadGreetingStats();
+      loadCurrentVoice();
     });
+
+    // Voice Selection
+    async function loadCurrentVoice() {
+      try {
+        const r = await fetch('/api/voice/available');
+        const data = await r.json();
+        
+        if (data.current) {
+          document.getElementById('voiceSelect').value = data.current;
+          console.log('Current voice:', data.current);
+          
+          // Update dropdown options based on availability
+          const select = document.getElementById('voiceSelect');
+          for (let option of select.options) {
+            const voiceKey = option.value;
+            if (data.available && data.available[voiceKey]) {
+              const voiceInfo = data.available[voiceKey];
+              if (!voiceInfo.available) {
+                option.disabled = true;
+                option.text += ' (Not Available)';
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load voice settings:', e);
+      }
+    }
+
+    async function changeVoice() {
+      const select = document.getElementById('voiceSelect');
+      const provider = select.value;
+      
+      try {
+        updateStatus('Switching voice...', '🔄');
+        
+        const r = await fetch('/api/voice/set?provider=' + provider, { 
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await r.json();
+        
+        if (data.success) {
+          console.log('Voice switched to:', provider);
+          
+          // Show friendly message based on selected voice
+          if (provider === 'sarvam') {
+            updateStatus('Voice: Sarvam Anushka 🇮🇳', '✅');
+          } else if (provider === 'elevenlabs') {
+            updateStatus('Voice: ElevenLabs Arfa 🌟', '✅');
+          }
+          
+          // Reset to normal status after 2 seconds
+          setTimeout(() => {
+            if (cameraActive) {
+              updateStatus('Camera Active - Monitoring', '👁️');
+            } else {
+              updateStatus('AI Greeting Assistant Ready', '👋');
+            }
+          }, 2000);
+        } else {
+          updateStatus('Failed to switch voice', '❌');
+          console.error('Voice switch failed:', data.message);
+          
+          // Revert to previous selection
+          await loadCurrentVoice();
+        }
+      } catch (e) {
+        updateStatus('Error switching voice', '❌');
+        console.error('Error changing voice:', e);
+        
+        // Revert to previous selection
+        await loadCurrentVoice();
+      }
+    }
   </script>
 </body>
 </html>

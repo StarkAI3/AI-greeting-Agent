@@ -120,6 +120,83 @@ def convert_name_to_marathi(name: str, person_details: Optional[Dict] = None) ->
     return name
 
 
+class ElevenLabsTTS:
+    """
+    ElevenLabs Text-to-Speech service
+    API Documentation: https://elevenlabs.io/docs/api-reference
+    """
+    
+    def __init__(self, api_key: str, voice_id: str = "N8CqI3qXFmT0tJHnzlrq"):
+        self.api_key = (api_key or "").strip()
+        self.voice_id = voice_id  # Arfa voice
+        self.base_url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.voice_id}"
+        self.default_config = {
+            "model_id": "eleven_turbo_v2_5",
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.75,
+                "style": 0.5,
+                "use_speaker_boost": True
+            }
+        }
+    
+    def generate_speech(self, text: str) -> Optional[bytes]:
+        """
+        Generate speech from text using ElevenLabs TTS API
+        
+        Args:
+            text: Text to convert to speech
+            
+        Returns:
+            Audio bytes or None if failed
+        """
+        try:
+            headers = {
+                "xi-api-key": self.api_key,
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "text": text,
+                "model_id": self.default_config["model_id"],
+                "voice_settings": self.default_config["voice_settings"]
+            }
+            
+            logger.info(f"🎤 Generating speech with ElevenLabs for: '{text[:50]}...'")
+            
+            response = requests.post(
+                self.base_url,
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                audio_bytes = response.content
+                logger.info(f"✅ Speech generated successfully ({len(audio_bytes)} bytes)")
+                return audio_bytes
+            else:
+                logger.error(f"ElevenLabs API error: {response.status_code} - {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error generating speech with ElevenLabs: {e}")
+            return None
+    
+    def set_voice_config(self, stability: float = None, similarity_boost: float = None, 
+                        style: float = None, use_speaker_boost: bool = None):
+        """Update voice configuration"""
+        if stability is not None:
+            self.default_config["voice_settings"]["stability"] = stability
+        if similarity_boost is not None:
+            self.default_config["voice_settings"]["similarity_boost"] = similarity_boost
+        if style is not None:
+            self.default_config["voice_settings"]["style"] = style
+        if use_speaker_boost is not None:
+            self.default_config["voice_settings"]["use_speaker_boost"] = use_speaker_boost
+        logger.info(f"ElevenLabs voice config updated: {self.default_config}")
+
+
 class SarvamTTS:
     """
     Sarvam AI Text-to-Speech service
@@ -134,9 +211,9 @@ class SarvamTTS:
             "target_language_code": "en-IN",  # English (India)
             # ACTUAL valid speakers for bulbul:v2: anushka, abhilash, manisha, vidya, arya, karun, hitesh
             "speaker": "anushka",
-            "pitch": 0,
-            "pace": 0.95,  # Slightly slower for clearer pronunciation
-            "loudness": 1.2,  # Reduced loudness to prevent distortion
+            "pitch": 0.6,
+            "pace": 1,  # Slightly slower for clearer pronunciation
+            "loudness": 1.5,  # Reduced loudness to prevent distortion
             "speech_sample_rate": 22050,
             "enable_preprocessing": True,
             # Valid models: 'bulbul:v2' or 'bulbul:v3-beta'
@@ -366,7 +443,7 @@ Generate ONE creative, ENERGETIC, fun greeting with LOTS of enthusiasm (just the
 
 
 class AudioPlayer:
-    """Simple audio player using pygame"""
+    """Simple audio player using pygame with support for multiple audio formats"""
     
     def __init__(self):
         if not PYGAME_AVAILABLE:
@@ -383,15 +460,58 @@ class AudioPlayer:
             logger.error(f"Failed to initialize pygame mixer: {e}")
             self.enabled = False
     
-    def play_audio(self, audio_bytes: bytes) -> bool:
-        """Play audio from bytes"""
+    def _convert_mp3_to_wav(self, mp3_bytes: bytes) -> bytes:
+        """Convert MP3 audio bytes to WAV format using pydub"""
+        try:
+            from pydub import AudioSegment
+            from io import BytesIO
+            
+            # Load MP3 from bytes
+            audio = AudioSegment.from_mp3(BytesIO(mp3_bytes))
+            
+            # Export as WAV
+            wav_io = BytesIO()
+            audio.export(wav_io, format='wav')
+            wav_bytes = wav_io.getvalue()
+            
+            logger.info(f"✅ Converted MP3 ({len(mp3_bytes)} bytes) to WAV ({len(wav_bytes)} bytes)")
+            return wav_bytes
+            
+        except ImportError:
+            logger.error("pydub not available - cannot convert MP3 to WAV. Install with: pip install pydub")
+            return None
+        except Exception as e:
+            logger.error(f"Error converting MP3 to WAV: {e}")
+            return None
+    
+    def play_audio(self, audio_bytes: bytes, audio_format: str = 'wav') -> bool:
+        """
+        Play audio from bytes
+        
+        Args:
+            audio_bytes: Audio data in bytes
+            audio_format: Format of audio ('wav', 'mp3', 'auto')
+        """
         if not self.enabled:
             logger.warning("Audio playback disabled")
             return False
         
         try:
+            # Auto-detect format or convert if needed
+            if audio_format == 'mp3' or (audio_format == 'auto' and audio_bytes[:3] == b'ID3'):
+                # MP3 format detected - convert to WAV
+                logger.info("Detected MP3 format, converting to WAV...")
+                wav_bytes = self._convert_mp3_to_wav(audio_bytes)
+                if wav_bytes is None:
+                    return False
+                audio_bytes = wav_bytes
+                file_suffix = '.wav'
+            else:
+                # Assume WAV format
+                file_suffix = '.wav'
+            
             # Save to temporary file
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+            with tempfile.NamedTemporaryFile(suffix=file_suffix, delete=False) as tmp_file:
                 tmp_path = tmp_file.name
                 tmp_file.write(audio_bytes)
             
@@ -434,16 +554,35 @@ class AudioPlayer:
 class GreetingManager:
     """
     Manages greeting generation and playback with cooldown logic
+    Supports multiple TTS providers: Sarvam AI and ElevenLabs
     """
     
     def __init__(
         self, 
         gemini_api_key: str,
-        sarvam_api_key: str,
-        cooldown_minutes: int = 5
+        sarvam_api_key: str = None,
+        elevenlabs_api_key: str = None,
+        cooldown_minutes: int = 5,
+        default_tts_provider: str = "sarvam"
     ):
         self.greeting_generator = GeminiGreetingGenerator(gemini_api_key)
-        self.tts_service = SarvamTTS(sarvam_api_key)
+        
+        # Initialize TTS services
+        self.sarvam_tts = None
+        self.elevenlabs_tts = None
+        
+        if sarvam_api_key:
+            self.sarvam_tts = SarvamTTS(sarvam_api_key)
+            logger.info("✅ Sarvam AI TTS initialized (Anushka voice)")
+        
+        if elevenlabs_api_key:
+            self.elevenlabs_tts = ElevenLabsTTS(elevenlabs_api_key, voice_id="N8CqI3qXFmT0tJHnzlrq")
+            logger.info("✅ ElevenLabs TTS initialized (Arfa voice)")
+        
+        # Set active TTS provider
+        self.tts_provider = default_tts_provider
+        self.tts_service = self._get_active_tts()
+        
         self.audio_player = AudioPlayer()
         self.cooldown_minutes = cooldown_minutes
         
@@ -451,7 +590,71 @@ class GreetingManager:
         self.last_greeted: Dict[str, datetime] = {}
         self.greeting_count: Dict[str, int] = {}
         
-        logger.info(f"✅ GreetingManager initialized (cooldown: {cooldown_minutes} min)")
+        logger.info(f"✅ GreetingManager initialized (cooldown: {cooldown_minutes} min, TTS: {self.tts_provider})")
+    
+    def _get_active_tts(self):
+        """Get the currently active TTS service"""
+        if self.tts_provider == "elevenlabs" and self.elevenlabs_tts:
+            return self.elevenlabs_tts
+        elif self.tts_provider == "sarvam" and self.sarvam_tts:
+            return self.sarvam_tts
+        else:
+            # Fallback to whichever is available
+            if self.sarvam_tts:
+                return self.sarvam_tts
+            elif self.elevenlabs_tts:
+                return self.elevenlabs_tts
+            else:
+                logger.error("No TTS service available!")
+                return None
+    
+    def set_tts_provider(self, provider: str) -> bool:
+        """
+        Switch between TTS providers
+        
+        Args:
+            provider: "sarvam" or "elevenlabs"
+            
+        Returns:
+            True if switch was successful
+        """
+        provider = provider.lower()
+        
+        if provider == "sarvam" and self.sarvam_tts:
+            self.tts_provider = "sarvam"
+            self.tts_service = self.sarvam_tts
+            logger.info("🔄 Switched to Sarvam AI TTS (Anushka voice)")
+            return True
+        elif provider == "elevenlabs" and self.elevenlabs_tts:
+            self.tts_provider = "elevenlabs"
+            self.tts_service = self.elevenlabs_tts
+            logger.info("🔄 Switched to ElevenLabs TTS (Arfa voice)")
+            return True
+        else:
+            logger.error(f"Cannot switch to {provider} - service not available")
+            return False
+    
+    def get_tts_provider(self) -> str:
+        """Get the current TTS provider name"""
+        return self.tts_provider
+    
+    def get_available_voices(self) -> Dict:
+        """Get list of available voice options"""
+        return {
+            "current": self.tts_provider,
+            "available": {
+                "sarvam": {
+                    "name": "Sarvam Anushka",
+                    "available": self.sarvam_tts is not None,
+                    "description": "Indian English voice - Natural and clear"
+                },
+                "elevenlabs": {
+                    "name": "ElevenLabs Arfa",
+                    "available": self.elevenlabs_tts is not None,
+                    "description": "Premium AI voice - Expressive and professional"
+                }
+            }
+        }
     
     def should_greet(self, name: str) -> bool:
         """Check if we should greet this person (based on cooldown)"""
@@ -477,17 +680,22 @@ class GreetingManager:
             # Generate greeting with Gemini using all person details
             greeting_text = self.greeting_generator.generate_greeting(name, person_details)
             
-            # Generate speech with Sarvam AI
+            # Generate speech with active TTS service
             audio_bytes = self.tts_service.generate_speech(greeting_text)
             
             if audio_bytes:
+                # Determine audio format based on TTS provider
+                audio_format = 'mp3' if self.tts_provider == 'elevenlabs' else 'wav'
+                
                 # Persist audio to outputs directory
                 try:
                     outputs_dir = Path("outputs")
                     outputs_dir.mkdir(exist_ok=True)
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     clean_name = _safe_filename(name or "person")
-                    filename = f"greeting_{timestamp}_{clean_name}.wav"
+                    # Save with appropriate extension
+                    file_ext = 'mp3' if audio_format == 'mp3' else 'wav'
+                    filename = f"greeting_{timestamp}_{clean_name}.{file_ext}"
                     file_path = outputs_dir / filename
                     with open(file_path, "wb") as f:
                         f.write(audio_bytes)
@@ -495,8 +703,8 @@ class GreetingManager:
                 except Exception as save_err:
                     logger.error(f"Failed to save greeting audio: {save_err}")
 
-                # Play audio
-                success = self.audio_player.play_audio(audio_bytes)
+                # Play audio with correct format
+                success = self.audio_player.play_audio(audio_bytes, audio_format=audio_format)
                 
                 if success:
                     # Update tracking

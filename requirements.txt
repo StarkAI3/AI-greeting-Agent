@@ -47,6 +47,9 @@ google-generativeai==0.8.3
 # Audio playback
 pygame==2.5.2
 
+# Audio format conversion (MP3 to WAV for ElevenLabs)
+pydub==0.25.1
+
 # HTTP requests for Sarvam AI TTS
 requests==2.31.0
 

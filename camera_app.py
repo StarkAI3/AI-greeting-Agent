@@ -68,21 +68,26 @@ async def lifespan(app: FastAPI):
             logger.error(f"Failed to initialize model: {e}")
             face_model = None
     
-    # Initialize Greeting service (Gemini + Sarvam AI)
+    # Initialize Greeting service (Gemini + Sarvam AI + ElevenLabs)
     try:
         gemini_key = os.getenv("GEMINI_API_KEY")
         sarvam_key = os.getenv("SARVAM_API_KEY")
+        elevenlabs_key = os.getenv("ELEVENLABS_API_KEY")
         
-        if GreetingManager and gemini_key and sarvam_key:
+        if GreetingManager and gemini_key and (sarvam_key or elevenlabs_key):
             greeting_manager = GreetingManager(
                 gemini_api_key=gemini_key,
                 sarvam_api_key=sarvam_key,
-                cooldown_minutes=5
+                elevenlabs_api_key=elevenlabs_key,
+                cooldown_minutes=5,
+                default_tts_provider="sarvam" if sarvam_key else "elevenlabs"
             )
-            logger.info("✅ Greeting service initialized (Gemini + Sarvam AI)")
+            logger.info("✅ Greeting service initialized (Gemini + Multi-TTS)")
         else:
-            if not gemini_key or not sarvam_key:
-                logger.warning("⚠️ GEMINI_API_KEY or SARVAM_API_KEY not set in .env file")
+            if not gemini_key:
+                logger.warning("⚠️ GEMINI_API_KEY not set in .env file")
+            elif not (sarvam_key or elevenlabs_key):
+                logger.warning("⚠️ SARVAM_API_KEY or ELEVENLABS_API_KEY not set in .env file")
             else:
                 logger.warning("Greeting service unavailable (greeting_service.py missing)")
             greeting_manager = None
@@ -404,6 +409,44 @@ async def update_greeting_config(
             )
             return {"success": True, "message": "Voice configuration updated", 
                     "config": greeting_manager.tts_service.default_config}
+        except Exception as e:
+            return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+    return JSONResponse({"success": False, "message": "Greeting service not initialized"}, status_code=500)
+
+
+@app.get("/api/voice/available")
+async def get_available_voices():
+    """Get list of available TTS voices"""
+    if greeting_manager:
+        try:
+            return greeting_manager.get_available_voices()
+        except Exception as e:
+            return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+    return JSONResponse({"success": False, "message": "Greeting service not initialized"}, status_code=500)
+
+
+@app.post("/api/voice/set")
+async def set_voice_provider(provider: str):
+    """
+    Switch between TTS providers
+    
+    Args:
+        provider: "sarvam" or "elevenlabs"
+    """
+    if greeting_manager:
+        try:
+            success = greeting_manager.set_tts_provider(provider)
+            if success:
+                return {
+                    "success": True, 
+                    "message": f"Switched to {provider} TTS",
+                    "current_provider": greeting_manager.get_tts_provider()
+                }
+            else:
+                return JSONResponse(
+                    {"success": False, "message": f"Failed to switch to {provider} - service not available"},
+                    status_code=400
+                )
         except Exception as e:
             return JSONResponse({"success": False, "message": str(e)}, status_code=500)
     return JSONResponse({"success": False, "message": "Greeting service not initialized"}, status_code=500)
