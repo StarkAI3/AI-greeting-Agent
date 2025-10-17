@@ -126,9 +126,9 @@ class ElevenLabsTTS:
     API Documentation: https://elevenlabs.io/docs/api-reference
     """
     
-    def __init__(self, api_key: str, voice_id: str = "UYoWPkHjaRgjWccloxC5"):
+    def __init__(self, api_key: str, voice_id: str = "MmQVkVZnQ0dUbfWzcW6f"):
         self.api_key = (api_key or "").strip()
-        self.voice_id = voice_id  # Koku voice
+        self.voice_id = voice_id  # zara voice
         self.base_url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.voice_id}"
         self.default_config = {
             "model_id": "eleven_turbo_v2_5",
@@ -576,8 +576,8 @@ class GreetingManager:
             logger.info("✅ Sarvam AI TTS initialized (Anushka voice)")
         
         if elevenlabs_api_key:
-            self.elevenlabs_tts = ElevenLabsTTS(elevenlabs_api_key, voice_id="UYoWPkHjaRgjWccloxC5")
-            logger.info("✅ ElevenLabs TTS initialized (Koku voice)")
+            self.elevenlabs_tts = ElevenLabsTTS(elevenlabs_api_key, voice_id="MmQVkVZnQ0dUbfWzcW6f")
+            logger.info("✅ ElevenLabs TTS initialized (zara voice)")
         
         # Set active TTS provider
         self.tts_provider = default_tts_provider
@@ -628,7 +628,7 @@ class GreetingManager:
         elif provider == "elevenlabs" and self.elevenlabs_tts:
             self.tts_provider = "elevenlabs"
             self.tts_service = self.elevenlabs_tts
-            logger.info("🔄 Switched to ElevenLabs TTS (Koku voice)")
+            logger.info("🔄 Switched to ElevenLabs TTS (zara voice)")
             return True
         else:
             logger.error(f"Cannot switch to {provider} - service not available")
@@ -649,7 +649,7 @@ class GreetingManager:
                     "description": "Indian English voice - Natural and clear"
                 },
                 "elevenlabs": {
-                    "name": "ElevenLabs Koku",
+                    "name": "ElevenLabs zara",
                     "available": self.elevenlabs_tts is not None,
                     "description": "Premium AI voice - Expressive and professional"
                 }
