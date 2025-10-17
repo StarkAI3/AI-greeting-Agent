@@ -30,6 +30,8 @@ __pycache__/
 uploads/
 outputs/
 
+# Ignore test outputs
+@Test Outputs/
 # Ignore enrolled faces (PII) and artifacts
 enrolled_faces/
 *.wav

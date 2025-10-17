@@ -98,7 +98,7 @@ class FaceRecognitionModel:
             # Face detection model (YOLO) with configurable path and safe fallback
             yolo_model_path = os.getenv(
                 "YOLO_MODEL_PATH",
-                "/home/stark/Desktop/Face-Detection-YOLO/Models/Face_Models/Face_Detect_best.pt",
+                "/home/stark/Desktop/voice-assistant/Models/Face_Models/Face_Detect_best.pt",
             )
             yolo_strict = str(os.getenv("YOLO_STRICT", "false")).strip().lower() in ("1", "true", "yes", "on")
 

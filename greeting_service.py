@@ -126,9 +126,9 @@ class ElevenLabsTTS:
     API Documentation: https://elevenlabs.io/docs/api-reference
     """
     
-    def __init__(self, api_key: str, voice_id: str = "N8CqI3qXFmT0tJHnzlrq"):
+    def __init__(self, api_key: str, voice_id: str = "UYoWPkHjaRgjWccloxC5"):
         self.api_key = (api_key or "").strip()
-        self.voice_id = voice_id  # Arfa voice
+        self.voice_id = voice_id  # Koku voice
         self.base_url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.voice_id}"
         self.default_config = {
             "model_id": "eleven_turbo_v2_5",
@@ -210,7 +210,7 @@ class SarvamTTS:
         self.default_config = {
             "target_language_code": "en-IN",  # English (India)
             # ACTUAL valid speakers for bulbul:v2: anushka, abhilash, manisha, vidya, arya, karun, hitesh
-            "speaker": "anushka",
+            "speaker": "vidya",
             "pitch": 0.6,
             "pace": 1,  # Slightly slower for clearer pronunciation
             "loudness": 1.5,  # Reduced loudness to prevent distortion
@@ -576,8 +576,8 @@ class GreetingManager:
             logger.info("✅ Sarvam AI TTS initialized (Anushka voice)")
         
         if elevenlabs_api_key:
-            self.elevenlabs_tts = ElevenLabsTTS(elevenlabs_api_key, voice_id="N8CqI3qXFmT0tJHnzlrq")
-            logger.info("✅ ElevenLabs TTS initialized (Arfa voice)")
+            self.elevenlabs_tts = ElevenLabsTTS(elevenlabs_api_key, voice_id="UYoWPkHjaRgjWccloxC5")
+            logger.info("✅ ElevenLabs TTS initialized (Koku voice)")
         
         # Set active TTS provider
         self.tts_provider = default_tts_provider
@@ -628,7 +628,7 @@ class GreetingManager:
         elif provider == "elevenlabs" and self.elevenlabs_tts:
             self.tts_provider = "elevenlabs"
             self.tts_service = self.elevenlabs_tts
-            logger.info("🔄 Switched to ElevenLabs TTS (Arfa voice)")
+            logger.info("🔄 Switched to ElevenLabs TTS (Koku voice)")
             return True
         else:
             logger.error(f"Cannot switch to {provider} - service not available")
@@ -649,7 +649,7 @@ class GreetingManager:
                     "description": "Indian English voice - Natural and clear"
                 },
                 "elevenlabs": {
-                    "name": "ElevenLabs Arfa",
+                    "name": "ElevenLabs Koku",
                     "available": self.elevenlabs_tts is not None,
                     "description": "Premium AI voice - Expressive and professional"
                 }
